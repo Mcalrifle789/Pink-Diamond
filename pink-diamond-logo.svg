@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 108" width="520" height="108" role="img" aria-label="Pink Diamond">
+  <defs>
+    <linearGradient id="pdGem" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff3fb"/>
+      <stop offset=".45" stop-color="#ffb6e2"/>
+      <stop offset="1" stop-color="#f0479f"/>
+    </linearGradient>
+    <linearGradient id="pdInk" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffe8f6"/>
+      <stop offset=".55" stop-color="#ffc3e8"/>
+      <stop offset="1" stop-color="#ff8fd0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- gem -->
+  <g transform="translate(6 10)">
+    <path d="M40 2 L76 34 L40 90 L4 34 Z" fill="url(#pdGem)" opacity=".96"/>
+    <path d="M40 2 L76 34 L40 90 L4 34 Z" fill="none" stroke="#fff0fa" stroke-width="1.4" opacity=".85"/>
+    <path d="M4 34 L76 34 M40 2 L40 90 M22 34 L40 90 L58 34 M22 34 L40 2 L58 34"
+          fill="none" stroke="#fff" stroke-width=".9" opacity=".62"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="104" y="52" fill="url(#pdInk)"
+        font-family="'Cormorant Garamond', Georgia, 'Times New Roman', serif"
+        font-size="44" font-weight="600" letter-spacing="1.5">Pink Diamond</text>
+  <text x="106" y="78" fill="#ff9ed8" opacity=".72"
+        font-family="'DM Mono', 'Courier New', monospace"
+        font-size="11" letter-spacing="5.6">UNFILTERED INTELLIGENCE</text>
+</svg>

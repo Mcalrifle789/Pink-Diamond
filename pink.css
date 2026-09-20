@@ -1,0 +1,253 @@
+/* ============================================================
+   PINK DIAMOND — additions on top of the ported Diamond system
+   1. ad layout   (two vertical $400 rails, one $350 bottom unit,
+                   dismissible grey pop-ups, rate card)
+   2. unfiltered  (the paid 18+ add-on: pill, switch, card, modals)
+   ============================================================ */
+
+/* ============================================================
+   1 · AD LAYOUT
+   ============================================================ */
+
+/* ---- black boxes: persistent, rotating inventory ---- */
+.ad-box{position:relative;background:#000;border:1px solid var(--line);overflow:hidden;cursor:pointer}
+.ad-box::before{content:'';position:absolute;inset:0;background:
+  radial-gradient(120% 60% at 20% 0%,rgba(255,120,200,.12),transparent 60%);pointer-events:none}
+.ad-box.ad-in{animation:ad-enter .55s cubic-bezier(.2,.7,.2,1)}
+@keyframes ad-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ad-box:hover{border-color:var(--accent)}
+
+.ad-kicker{display:block;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.3em;color:#8d7a86}
+.ad-title{display:block;font-family:'Dhurjati','Manrope',sans-serif;font-size:26px;line-height:1.02;
+  letter-spacing:-.02em;color:#fff;margin:10px 0 8px}
+.ad-body{margin:0;font-size:11px;line-height:1.6;color:#b9a8b4}
+.ad-cta{display:inline-flex;gap:10px;align-items:center;margin-top:14px;font-size:10px;letter-spacing:.08em;
+  color:var(--electric);border-bottom:1px solid rgba(255,158,216,.35);padding-bottom:5px}
+.ad-served{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-family:'DM Mono',monospace;
+  font-size:7px;letter-spacing:.2em;color:#5d4e58}
+
+/* ---- the two vertical placements ($400 each) ---- */
+.ad-rail{position:fixed;top:118px;z-index:11;width:172px;display:flex;flex-direction:column;gap:8px}
+.ad-rail-left{left:14px}
+.ad-rail-right{right:14px}
+.ad-rail .ad-box{height:600px;padding:22px 18px}
+.ad-rail-tag,.ad-leaderboard-tag{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:.26em;
+  color:var(--muted);opacity:.7}
+
+/* ---- the one horizontal placement ($350) ---- */
+.ad-leaderboard{position:fixed;bottom:0;left:0;right:0;z-index:12;display:flex;flex-direction:column;
+  align-items:center;gap:4px;padding:8px 14px 10px;
+  background:linear-gradient(180deg,rgba(8,6,10,0),rgba(8,6,10,.92) 55%);backdrop-filter:blur(10px)}
+html[data-theme="light"] .ad-leaderboard{background:linear-gradient(180deg,rgba(250,241,247,0),rgba(250,241,247,.94) 55%)}
+.ad-leaderboard .ad-box{width:min(970px,100%);height:90px;padding:12px 24px;
+  display:flex;align-items:center;gap:24px}
+.ad-leaderboard .ad-kicker{flex:0 0 auto;writing-mode:horizontal-tb}
+.ad-leaderboard .ad-title{font-size:22px;margin:0;flex:0 0 auto}
+.ad-leaderboard .ad-body{flex:1 1 auto}
+.ad-leaderboard .ad-cta{margin:0;flex:0 0 auto}
+.ad-leaderboard .ad-served{display:none}
+body{padding-bottom:116px}
+
+/* keep the page clear of the rails */
+@media (min-width:1280px){ .page-shell{max-width:min(1400px,calc(100vw - 400px))} }
+@media (max-width:1279px){ .ad-rail{display:none} }
+
+/* ---- grey boxes: dismissible pop-up ads ---- */
+.ad-popup{position:fixed;right:22px;bottom:128px;z-index:50;width:320px;
+  background:#2b2730;border:1px solid rgba(255,255,255,.14);border-radius:10px;
+  box-shadow:0 26px 70px rgba(0,0,0,.55);opacity:0;transform:translateY(14px) scale(.97);
+  transition:opacity .32s ease,transform .32s cubic-bezier(.2,.7,.2,1)}
+.ad-popup.open{opacity:1;transform:none}
+.ad-popup-inner{padding:22px 20px 26px;cursor:pointer;position:relative}
+.ad-popup .ad-title{font-size:24px}
+.ad-popup .ad-served{position:static;display:block;text-align:left;margin-top:14px;color:#7d7280}
+.ad-popup-close{position:absolute;top:6px;right:8px;width:28px;height:28px;border-radius:50%;
+  display:grid;place-items:center;font-size:18px;line-height:1;color:#cfc4cd;z-index:2;
+  background:rgba(255,255,255,.06);transition:.2s}
+.ad-popup-close:hover{background:var(--heat);color:#fff;transform:rotate(90deg)}
+@media (max-width:620px){ .ad-popup{left:14px;right:14px;width:auto;bottom:118px} }
+
+/* ---- rate card ---- */
+.rate-card{display:flex;flex-direction:column;gap:2px;margin:0 0 26px;border-top:1px solid var(--line)}
+.rate-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;
+  padding:14px 0;border-bottom:1px solid var(--line)}
+.rate-box{width:16px;height:22px;border:1px solid var(--line);display:block}
+.rate-box.is-black{background:#000}
+.rate-box.is-grey{background:#2b2730}
+.rate-meta strong{display:block;font-size:13px;font-weight:600}
+.rate-meta span{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--muted)}
+.rate-price{font-family:'Dhurjati','Manrope',sans-serif;font-size:28px;letter-spacing:-.03em;color:var(--ink)}
+.rate-price i{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--muted);font-style:normal}
+
+.ad-legend{display:flex;flex-direction:column;gap:8px;margin-bottom:22px;
+  font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--muted)}
+.ad-legend span{display:flex;align-items:center;gap:10px}
+.legend-box{width:12px;height:12px;border:1px solid var(--line);display:inline-block}
+.legend-box.is-black{background:#000}
+.legend-box.is-grey{background:#2b2730}
+
+.ad-platforms{margin:26px 0 24px}
+.ad-platforms-label{display:block;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.28em;
+  color:var(--muted);margin-bottom:12px}
+.platform-chips{display:flex;flex-wrap:wrap;gap:8px}
+.platform-chips b{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;font-weight:400;
+  border:1px solid var(--glass-brd);border-radius:20px;padding:7px 13px;color:var(--soft)}
+.platform-chips b:hover{border-color:var(--accent);color:var(--ink)}
+
+/* ============================================================
+   2 · UNFILTERED MODE (the paid 18+ add-on)
+   ============================================================ */
+.heat-tag{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.16em;vertical-align:middle;
+  border:1px solid var(--heat);color:var(--heat);border-radius:20px;padding:3px 7px;margin-left:8px}
+
+/* ---- header pill ---- */
+.heat-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--glass-brd);
+  border-radius:20px;padding:7px 13px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.16em;
+  color:var(--muted);transition:.25s}
+.heat-pill:hover{border-color:var(--heat);color:var(--ink)}
+.heat-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:.25s}
+.heat-pill.on{border-color:var(--heat);color:var(--heat);background:var(--heat-soft)}
+.heat-pill.on .heat-dot{background:var(--heat);box-shadow:0 0 0 4px var(--heat-soft);animation:heat-pulse 2s infinite}
+@keyframes heat-pulse{50%{box-shadow:0 0 0 8px rgba(255,79,156,.05)}}
+.nav-heat{color:var(--heat) !important;opacity:.85}
+.nav-heat:hover{opacity:1}
+
+/* ---- the section ---- */
+.heat-section{padding-top:105px}
+.heat-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:7vw;align-items:start}
+.heat-copy h2{font-size:clamp(45px,5vw,70px);line-height:1.04;letter-spacing:-.05em;font-weight:600;
+  margin:0 0 25px;font-family:'Dhurjati','Manrope',sans-serif}
+.heat-copy h2 span{color:var(--heat)}
+.heat-copy>p{color:var(--muted);font-size:15px;line-height:1.85;margin-bottom:28px}
+.heat-copy>p strong{color:var(--ink)}
+.heat-list{list-style:none;margin:0 0 30px;padding:0;display:flex;flex-direction:column;gap:14px}
+.heat-list li{font-size:13px;line-height:1.7;color:var(--muted);padding-left:18px;position:relative}
+.heat-list li::before{content:'◆';position:absolute;left:0;top:1px;font-size:8px;color:var(--heat)}
+.heat-list b{color:var(--ink);font-weight:600}
+.heat-actions{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-bottom:20px}
+.heat-price{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--heat)}
+.heat-copy>p.heat-fine{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--muted);
+  line-height:1.8;max-width:520px;margin:0}
+.heat-button{border-color:rgba(255,79,156,.5) !important;background:var(--heat) !important;color:#fff !important}
+.heat-button:hover{box-shadow:0 14px 40px rgba(255,79,156,.32)}
+
+/* ---- the state card ---- */
+.heat-card{border-radius:14px;padding:26px 24px}
+.heat-card-top{display:flex;align-items:center;gap:10px;font-family:'DM Mono',monospace;font-size:8px;
+  letter-spacing:.22em;color:var(--muted);padding-bottom:20px;border-bottom:1px solid var(--line)}
+.heat-badge{margin-left:auto;border:1px solid var(--line);border-radius:20px;padding:4px 9px;color:var(--soft)}
+html.heat-on .heat-badge{border-color:var(--heat);color:var(--heat);background:var(--heat-soft)}
+.heat-switch-wrap{display:flex;align-items:center;gap:16px;padding:24px 0}
+.heat-switch{width:62px;height:32px;border-radius:20px;border:1px solid var(--glass-brd);
+  background:rgba(255,255,255,.05);position:relative;flex:0 0 auto;transition:.3s}
+.heat-switch .heat-knob{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;
+  background:var(--soft);transition:.3s cubic-bezier(.2,.7,.2,1)}
+.heat-switch.on{background:var(--heat);border-color:var(--heat);box-shadow:0 0 22px rgba(255,79,156,.35)}
+.heat-switch.on .heat-knob{left:35px;background:#fff}
+.heat-switch-meta strong{display:block;font-size:16px}
+.heat-switch-meta span{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--muted)}
+.heat-rows{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.heat-row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:13px 0;
+  border-bottom:1px solid var(--line);font-size:12px}
+.heat-row span{color:var(--muted);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em}
+.heat-row b{font-weight:600;text-align:right}
+html.heat-on .heat-row b{color:var(--heat)}
+.heat-note{margin-top:20px;display:flex;align-items:center;gap:10px;font-family:'DM Mono',monospace;
+  font-size:8px;letter-spacing:.2em;color:var(--muted)}
+.heat-note .ad-dot{background:var(--heat);box-shadow:0 0 0 4px var(--heat-soft)}
+
+/* ---- plans add-on strip ---- */
+.addon-strip{margin-top:14px;border-radius:10px;display:flex;align-items:center;gap:18px;padding:20px 24px;
+  border-color:rgba(255,79,156,.28)}
+.addon-strip.active{background:linear-gradient(90deg,var(--heat-soft),transparent 70%)}
+.addon-spark{font-size:15px;color:var(--heat)}
+.addon-strip strong{font-size:15px;display:block}
+.addon-strip p{margin:5px 0 0;font-size:12px;color:var(--muted);max-width:560px;line-height:1.7}
+.addon-buy{margin-left:auto;display:flex;align-items:center;gap:18px;flex:0 0 auto}
+.addon-buy b{font-family:'Dhurjati','Manrope',sans-serif;font-size:30px;letter-spacing:-.03em;color:var(--heat)}
+.addon-buy b i{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--muted);font-style:normal}
+.addon-buy button{border:1px solid rgba(255,79,156,.45);background:var(--heat);color:#fff;
+  padding:12px 17px;border-radius:2px;font-size:11px;font-weight:700;letter-spacing:.03em;
+  display:inline-flex;gap:14px;align-items:center;transition:.25s}
+.addon-buy button:hover{box-shadow:0 14px 34px rgba(255,79,156,.3)}
+
+/* ---- agent shell ---- */
+.agent-heat{display:flex;align-items:center;gap:12px;width:100%;padding:12px 13px;margin-bottom:14px;
+  border:1px solid var(--glass-brd);border-radius:8px;text-align:left;transition:.25s}
+.agent-heat:hover{border-color:var(--heat)}
+.agent-heat-switch{width:38px;height:21px;border-radius:14px;border:1px solid var(--glass-brd);
+  background:rgba(255,255,255,.05);position:relative;flex:0 0 auto;transition:.3s}
+.agent-heat-switch .heat-knob{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;
+  background:var(--soft);transition:.3s cubic-bezier(.2,.7,.2,1)}
+.agent-heat.on .agent-heat-switch{background:var(--heat);border-color:var(--heat)}
+.agent-heat.on .agent-heat-switch .heat-knob{left:20px;background:#fff}
+.agent-heat-text b{display:block;font-size:12px;font-weight:600}
+.agent-heat-text small{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.1em;color:var(--muted)}
+.agent-heat.on{border-color:var(--heat);background:var(--heat-soft)}
+.agent-mode-tag{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:.2em;border:1px solid var(--line);
+  border-radius:20px;padding:3px 7px;color:var(--muted);margin-left:8px}
+.agent-overlay.heat .agent-mode-tag{border-color:var(--heat);color:var(--heat);background:var(--heat-soft)}
+.agent-overlay.heat .agent-shell{box-shadow:0 0 0 1px rgba(255,79,156,.28),0 40px 120px rgba(255,79,156,.14)}
+.agent-overlay.heat .msg.ai{border-left:2px solid var(--heat)}
+
+/* ---- settings row ---- */
+.heat-setting strong{color:var(--ink)}
+.heat-setting-actions{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+.revoke-link{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.14em;color:var(--muted);
+  border-bottom:1px solid var(--line);padding-bottom:3px}
+.revoke-link:hover{color:var(--heat);border-color:var(--heat)}
+.pill-toggle.on{border-color:var(--heat);color:var(--heat);background:var(--heat-soft)}
+
+/* ---- 18+ gate + add-on checkout ---- */
+.heat-modal{border-color:rgba(255,79,156,.32)}
+.heat-modal .modal-kicker span{color:var(--heat)}
+.heat-terms{list-style:none;margin:22px 0;padding:0;display:flex;flex-direction:column;gap:12px}
+.heat-terms li{font-size:12px;line-height:1.7;color:var(--muted);padding-left:18px;position:relative}
+.heat-terms li::before{content:'·';position:absolute;left:4px;top:-2px;font-size:18px;color:var(--heat)}
+.heat-check{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--ink);margin-bottom:22px;cursor:pointer}
+.heat-check input{width:17px;height:17px;accent-color:var(--heat)}
+.addon-lines{margin:24px 0 18px;border-top:1px solid var(--line)}
+.addon-line{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:13px 0;
+  border-bottom:1px solid var(--line);font-size:12px}
+.addon-line span{color:var(--muted);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em}
+.addon-line b{font-weight:600}
+.addon-total b{font-family:'Dhurjati','Manrope',sans-serif;font-size:26px;letter-spacing:-.03em;color:var(--heat)}
+.addon-note{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--muted);
+  line-height:1.8;margin:0 0 22px}
+.addon-cancel{display:block;width:100%;text-align:center;margin-top:14px;font-size:11px}
+
+/* ---- catalog: uncensored rail ---- */
+.catalog-heat{margin-top:20px}
+.heat-title{color:var(--heat) !important}
+.catalog-heat-note{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--muted);
+  line-height:1.8;max-width:680px;margin:-6px 0 20px}
+.catalog-heat-note a{color:var(--heat);border-bottom:1px solid rgba(255,79,156,.4)}
+.heat-group{border-color:rgba(255,79,156,.24)}
+
+/* ---- responsive ---- */
+@media (max-width:900px){
+  .heat-grid{grid-template-columns:1fr;gap:48px}
+  .addon-strip{flex-direction:column;align-items:flex-start}
+  .addon-buy{margin-left:0}
+  .ad-leaderboard .ad-box{grid-template-columns:1fr;height:auto;padding:14px 18px;gap:6px}
+  .ad-leaderboard .ad-title{font-size:18px}
+  body{padding-bottom:150px}
+}
+@media (prefers-reduced-motion:reduce){
+  .ad-box.ad-in{animation:none}
+  .heat-pill.on .heat-dot{animation:none}
+}
+
+/* ---- ads never intrude on the agent workspace or a modal ---- */
+html.agent-open .ad-popup,
+html.agent-open .ad-rail,
+html.agent-open .ad-leaderboard{opacity:0;pointer-events:none;transition:opacity .25s}
+
+/* ---- the scroll diamond has to clear the left rail ---- */
+@media (min-width:1280px){
+  .scroll-diamond{top:auto;bottom:150px;transform:none;left:58px}
+}
+
+/* ---- the pop-up demo card reads as a grey box in both themes ---- */
+.ad-stage .ad-window{background:rgba(120,112,124,.18);border-color:rgba(160,150,165,.3)}
+html[data-theme="light"] .ad-stage .ad-window{background:rgba(70,60,72,.1)}

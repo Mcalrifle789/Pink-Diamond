@@ -1,0 +1,9 @@
+# Build artifacts
+core/build/
+backend/__pycache__/
+database/*.db
+node_modules/
+
+# Environment — never commit keys
+.env
+*.token

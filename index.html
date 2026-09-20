@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#08060a" />
+  <title>Pink Diamond — an unfiltered AI agent for tasks &amp; creation</title>
+  <meta name="description" content="Pink Diamond is a web-hosted AI agent for tasks, automation, and image &amp; video generation — with an optional paid Unfiltered Mode for adult, uncensored output." />
+  <meta name="rating" content="adult" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <meta property="og:title" content="Pink Diamond — unfiltered intelligence" />
+  <meta property="og:description" content="The rose facet of the Diamond family. Toggle Unfiltered Mode as a paid add-on." />
+  <meta property="og:type" content="website" />
+
+  <!-- ===== Google Tag Manager (container id set in ads.js -> ADS.gtmId) ===== -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ dataLayer.push(arguments); }
+    gtag('js', new Date());
+  </script>
+  <script src="ads-config.js"></script>
+  <script>
+    (function bootstrapGoogleTags(){
+      var C = window.ADS_CONFIG || {};
+      // Google Tag Manager
+      if (C.gtmId && !/^GTM-XXXX/.test(C.gtmId)) {
+        var g = document.createElement('script');
+        g.async = true;
+        g.src = 'https://www.googletagmanager.com/gtm.js?id=' + C.gtmId;
+        document.head.appendChild(g);
+        dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
+      }
+      // Google Ads / GA4 gtag.js
+      if (C.googleAdsId && !/^AW-XXXX/.test(C.googleAdsId)) {
+        var a = document.createElement('script');
+        a.async = true;
+        a.src = 'https://www.googletagmanager.com/gtag/js?id=' + C.googleAdsId;
+        document.head.appendChild(a);
+        gtag('config', C.googleAdsId);
+        if (C.ga4Id) gtag('config', C.ga4Id);
+      }
+      // Google Publisher Tag (on-site ad serving)
+      if (C.useGpt && C.networkCode && !/^\/0000/.test(C.networkCode)) {
+        window.googletag = window.googletag || { cmd: [] };
+        var t = document.createElement('script');
+        t.async = true;
+        t.src = 'https://securepubads.g.doubleclick.net/tag/js/gpt.js';
+        document.head.appendChild(t);
+      }
+    })();
+  </script>
+
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="pink.css" />
+</head>
+<body data-theme="dark">
+  <noscript><iframe title="gtm" src="https://www.googletagmanager.com/ns.html" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+
+  <!-- ============ INTRO: dancing diamond + vortex logo formation ============ -->
+  <div id="intro" class="intro-overlay" aria-hidden="true">
+    <div class="vortex">
+      <span class="vortex-ring"></span><span class="vortex-ring"></span>
+      <span class="vortex-ring"></span><span class="vortex-ring"></span>
+      <div class="intro-gem" aria-hidden="true">
+        <svg viewBox="0 0 100 120" width="100" height="120">
+          <defs>
+            <linearGradient id="gemG" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#fff4fc"/><stop offset=".5" stop-color="#ffbce9"/><stop offset="1" stop-color="#f06fc0"/>
+            </linearGradient>
+          </defs>
+          <path d="M50 4 L92 46 L50 116 L8 46 Z" fill="url(#gemG)" opacity=".95"/>
+          <path d="M50 4 L92 46 L50 116 L8 46 Z" fill="none" stroke="#ffeaf8" stroke-width="1.2" opacity=".8"/>
+          <path d="M8 46 L92 46 M50 4 L50 116 M28 46 L50 116 L72 46 M28 46 L50 4 L72 46" stroke="#ffdbf3" stroke-width=".7" fill="none" opacity=".7"/>
+        </svg>
+      </div>
+    </div>
+    <img class="intro-logo" src="pink-diamond-logo.svg" alt="Pink Diamond" />
+    <div class="intro-tag">ENTERING THE FACET</div>
+    <button class="intro-skip" id="intro-skip">Skip intro →</button>
+  </div>
+
+  <!-- ============ BACKDROP LAYERS ============ -->
+  <div class="marble-bg" aria-hidden="true"></div>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
+  <!-- scroll-reactive side diamond -->
+  <div class="scroll-diamond" aria-hidden="true">
+    <svg viewBox="0 0 60 72"><path d="M30 2 L56 27 L30 70 L4 27 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 27 L56 27 M30 2 L30 70 M17 27 L30 70 L43 27 M17 27 L30 2 L43 27" stroke="currentColor" stroke-width="1" opacity=".55"/></svg>
+    <span class="scroll-diamond-label">SCROLL</span>
+  </div>
+
+  <!-- ============ AD LAYOUT: two vertical placements ($400 each) ============ -->
+  <aside class="ad-rail ad-rail-left" aria-label="Advertisement">
+    <span class="ad-rail-tag">AD · 160×600</span>
+    <div class="ad-box ad-box-black" data-placement="rail-left"></div>
+  </aside>
+  <aside class="ad-rail ad-rail-right" aria-label="Advertisement">
+    <span class="ad-rail-tag">AD · 160×600</span>
+    <div class="ad-box ad-box-black" data-placement="rail-right"></div>
+  </aside>
+
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Pink Diamond home">
+        <img class="brand-logo" src="pink-diamond-logo.svg" alt="Pink Diamond" />
+      </a>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a href="#how-it-works">How it works</a>
+        <a href="#plans">Plans</a>
+        <a href="#models">Models</a>
+        <a href="#agent-preview">Agent</a>
+        <a href="#unfiltered" class="nav-heat">Unfiltered</a>
+        <a href="#advertise">Advertise</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light / dark mode" title="Toggle light / dark">
+          <span class="theme-icon">◐</span>
+        </button>
+        <button class="heat-pill" data-unfiltered-toggle aria-pressed="false" title="Unfiltered Mode — paid add-on">
+          <span class="heat-dot"></span><span class="heat-pill-label">SFW</span>
+        </button>
+        <button class="text-button" data-open-auth="signin">Sign in</button>
+        <button class="header-cta magnetic" data-launch-agent>Launch agent <span>↗</span></button>
+        <button class="avatar-button" id="avatar-button" hidden aria-label="Open profile"></button>
+      </div>
+      <button class="menu-button" aria-label="Toggle menu"><span></span><span></span></button>
+    </header>
+
+    <main id="top">
+      <section class="hero-section">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="pulse-dot"></span> A CRYSTALLINE AI OPERATING LAYER</div>
+          <h1>Make space for<br /><em>brilliant work.</em></h1>
+          <p class="hero-intro">Pink Diamond is an intelligent web agent for tasks, automation, and image &amp; video creation — cut and polished like the stone it's named for.</p>
+          <div class="hero-actions">
+            <button class="primary-button magnetic gravity" data-launch-agent>Open the agent <span>↗</span></button>
+            <a class="play-link" href="#how-it-works"><span class="play-icon">▶</span> See how it works</a>
+          </div>
+          <div class="trust-row"><span>NO CREDIT CARD REQUIRED</span><i></i><span>PRIVATE BY DESIGN</span><i></i><span>REFRACTED FOR CLARITY</span></div>
+        </div>
+        <div class="hero-art-wrap">
+          <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+          <svg class="hero-wire-diamond" viewBox="0 0 100 120" aria-hidden="true">
+            <path d="M50 4 L92 46 L50 116 L8 46 Z" fill="none" stroke="currentColor" stroke-width="1"/>
+            <path d="M8 46 L92 46 M50 4 L50 116 M28 46 L50 116 L72 46 M28 46 L50 4 L72 46" stroke="currentColor" stroke-width=".6" opacity=".55"/>
+          </svg>
+          <div class="floating-note note-top glass"><span class="note-kicker">01 / ASSIST</span><strong>Turn intent<br />into motion.</strong></div>
+          <div class="floating-note note-bottom glass"><span class="note-kicker">LIVE CONTEXT</span><strong>A private facet<br />for your best work.</strong><span class="signal-bars"><i></i><i></i><i></i><i></i></span></div>
+        </div>
+      </section>
+
+      <section class="logo-strip" aria-label="Supported providers">
+        <span>Cut from the best intelligence</span><div class="provider-logos"><b>OPENROUTER</b><b>ANTHROPIC</b><b>OPENAI</b><b>GROK</b><b>GOOGLE</b><b>+</b></div>
+      </section>
+
+      <section class="section intro-section" id="how-it-works">
+        <div class="section-label">01 — THE FEELING</div>
+        <div class="intro-grid">
+          <h2>Less prompting.<br /><span>More brilliance.</span></h2>
+          <div class="intro-body"><p>Pink Diamond keeps the intelligence close, the interface quiet, and your next move obvious. An agent that remembers the shape of the work without getting in the way.</p><a href="#agent-preview" class="underlined-link">Meet the agent <span>↗</span></a></div>
+        </div>
+      </section>
+
+      <section class="feature-section section" id="workflow">
+        <div class="feature-visual">
+          <div class="visual-glow"></div>
+          <div class="workflow-card glass">
+            <div class="workflow-top"><span class="mini-brand"><span class="mini-mark"></span> PINK / WORKSPACE</span><span class="status-pill"><i></i> READY</span></div>
+            <div class="workflow-title"><span>WED, 09:41</span><h3>Good morning, <em>Michael.</em></h3></div>
+            <div class="workflow-task"><div class="task-icon">✦</div><div><span class="task-label">ACTIVE THREAD</span><strong>Launch the next right thing.</strong><p>3 actions · 1 decision · 12 min saved</p></div><span class="task-arrow">↗</span></div>
+            <div class="workflow-lines"><span></span><span></span><span></span></div>
+            <div class="workflow-bottom"><span>Context, distilled.</span><span class="spark">⌁</span></div>
+          </div>
+          <div class="vertical-caption">PINK DIAMOND / PRIVATE WORKSPACE</div>
+        </div>
+        <div class="feature-copy"><div class="section-label">02 — THE WORKSPACE</div><h2>Your work,<br /><span>already in focus.</span></h2><p>From a loose thought to a finished render, Pink Diamond holds the thread. Bring a brief, a question, or a messy middle — the agent gives you a clean next step.</p><div class="feature-list"><div><span>01</span><strong>Keep your context</strong><p>One private place for every moving piece.</p></div><div><span>02</span><strong>Choose your intelligence</strong><p>Move between leading models without losing momentum.</p></div></div></div>
+      </section>
+
+      <section class="section capabilities-section" id="security">
+        <div class="section-label">03 — THE CAPABILITIES</div>
+        <div class="capabilities-heading"><h2>Sharp enough for<br /><span>the complex stuff.</span></h2><p>Designed for the decisions that deserve more than a blank chat box.</p></div>
+        <div class="capability-grid"><article class="glass"><span class="cap-number">01</span><div class="cap-icon">⌘</div><h3>Research that<br />keeps up.</h3><p>Search, synthesize, and surface the signal across the web and your connected tools.</p><a href="#plans">Learn more <span>↗</span></a></article><article class="accent-card glass"><span class="cap-number">02</span><div class="cap-icon">↯</div><h3>Automation<br />with judgment.</h3><p>Turn repeatable work into reliable systems, with you always in the loop.</p><a href="#plans">Learn more <span>↗</span></a></article><article class="glass"><span class="cap-number">03</span><div class="cap-icon">◈</div><h3>Image &amp; video<br />generation.</h3><p>Create with the strongest image and video models — Nano Banana Pro, Seedance, Veo, Sora and more.</p><a href="#plans">Learn more <span>↗</span></a></article></div>
+      </section>
+
+      <section class="quote-section"><div class="quote-mark">“</div><blockquote>The best tool is the one that makes the<br /><em>next step feel obvious.</em></blockquote><div class="quote-rule"></div><span>THE PINK DIAMOND PRINCIPLE</span></section>
+
+      <!-- ============ AGENT PREVIEW ============ -->
+      <section class="section agent-preview" id="agent-preview">
+        <div class="section-label">04 — THE AGENT</div>
+        <div class="agent-preview-grid">
+          <div class="agent-copy">
+            <h2>Talk to a mind<br /><span>cut from glass.</span></h2>
+            <p>Ask anything. Pink Diamond reads what you mean, thinks it through, and answers with clarity — then helps you act on it.</p>
+            <button class="primary-button magnetic gravity" data-launch-agent>Open the agent <span>↗</span></button>
+          </div>
+          <div class="agent-mock glass" data-launch-agent role="button" tabindex="0" aria-label="Launch the agent">
+            <div class="agent-mock-top"><span class="mini-mark"></span> PINK DIAMOND · AGENT</div>
+            <div class="agent-mock-body">
+              <div class="bubble user">Draft a launch plan for our new feature.</div>
+              <div class="bubble ai"><span class="ai-dot"></span>On it — here's a three-phase plan with owners and dates…</div>
+            </div>
+            <div class="agent-mock-input"><span>ask anything…</span><span class="send-mock">➤</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PLANS / SUBSCRIPTIONS ============ -->
+      <section class="section plans-section" id="plans">
+        <div class="section-label">05 — PLANS THAT SCALE</div>
+        <div class="plans-heading"><h2>Start light.<br /><span>Go brilliant.</span></h2><div class="billing-toggle"><button class="active" data-billing="monthly">Monthly</button><button data-billing="yearly">Yearly <small>save 20%</small></button></div></div>
+        <div class="plan-grid" id="plan-grid"></div>
+        <div class="paygo glass"><span class="paygo-spark">✦</span><div><strong>Pay as you go</strong><p>Need a little extra runway? Add credits when you need them, with no commitment. Free plan available — switches to open-weight models.</p></div><button class="magnetic" data-paygo>Add credits <span>↗</span></button></div>
+        <div class="addon-strip glass" id="addon-strip">
+          <span class="addon-spark">◆</span>
+          <div>
+            <strong>Unfiltered Mode <span class="heat-tag">18+</span></strong>
+            <p>An optional add-on for any paid plan. The agent stops filtering, writes adult material, and routes to uncensored models. Not available on Free.</p>
+          </div>
+          <div class="addon-buy">
+            <b id="addon-price">+$18<i>/mo</i></b>
+            <button class="magnetic heat-button" data-unfiltered-toggle>Add to plan <span>↗</span></button>
+          </div>
+        </div>
+        <p class="plans-fine">Every payment is split 50/50 — half to the makers, half funding the private API key issued to your account. The key is never shown to you and routes through OpenRouter behind the scenes.</p>
+      </section>
+
+  <!-- ============ MODEL CATALOG ============ -->
+      <section class="section model-catalog" id="models" aria-label="Model catalog"><div id="model-catalog"></div></section>
+
+      <!-- ============ UNFILTERED MODE (paid add-on) ============ -->
+      <section class="section heat-section" id="unfiltered">
+        <div class="section-label">06 — THE PINK FACET</div>
+        <div class="heat-grid">
+          <div class="heat-copy">
+            <h2>Same diamond.<br /><span>No filter.</span></h2>
+            <p>Pink Diamond runs polished and safe by default. Flip <strong>Unfiltered Mode</strong> on and the agent drops the hedging, writes mature and explicit fiction, takes blunt positions, and routes to uncensored open-weight models instead of the guarded endpoints.</p>
+            <ul class="heat-list">
+              <li><b>Direct answers.</b> No lecture, no disclaimer padding, no refusal for its own sake.</li>
+              <li><b>Adult creative work.</b> Mature fiction, explicit prose, unrestrained visual prompts.</li>
+              <li><b>Uncensored routing.</b> Dolphin, Venice, Euryale, Midnight Rose and friends, via your private key.</li>
+              <li><b>Still lawful.</b> Sexual content involving minors, real-person sexual imagery, and genuine weapon or malware instruction stay blocked — permanently, on every tier.</li>
+            </ul>
+            <div class="heat-actions">
+              <button class="primary-button heat-button magnetic gravity" data-unfiltered-toggle>Turn on Unfiltered Mode <span>↗</span></button>
+              <span class="heat-price" id="heat-price">+$18 / month on any paid plan</span>
+            </div>
+            <p class="heat-fine">Requires a paid plan and a one-time 18+ confirmation. Billed as a separate line on your subscription and cancellable at any time — turning the toggle off stops the charge at the end of the period.</p>
+          </div>
+          <div class="heat-card glass">
+            <div class="heat-card-top">
+              <span class="mini-mark"></span>
+              <span>PINK DIAMOND · UNFILTERED</span>
+              <span class="heat-badge" id="heat-badge">OFF</span>
+            </div>
+            <div class="heat-switch-wrap">
+              <button class="heat-switch" data-unfiltered-toggle role="switch" aria-checked="false" aria-label="Toggle Unfiltered Mode">
+                <span class="heat-knob"></span>
+              </button>
+              <div class="heat-switch-meta">
+                <strong id="heat-state-title">Filtered</strong>
+                <span id="heat-state-sub">Safe defaults · included in every plan</span>
+              </div>
+            </div>
+            <div class="heat-rows">
+              <div class="heat-row"><span>Tone</span><b id="heat-tone">Measured</b></div>
+              <div class="heat-row"><span>Adult content</span><b id="heat-adult">Blocked</b></div>
+              <div class="heat-row"><span>Routing</span><b id="heat-route">Guarded endpoints</b></div>
+              <div class="heat-row"><span>Credits / message</span><b id="heat-cost">1</b></div>
+            </div>
+            <div class="heat-note"><span class="ad-dot"></span> 18+ ONLY · YOUR TOGGLE, YOUR BILL</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ ADVERTISE / RATE CARD ============ -->
+      <section class="section ad-section" id="advertise">
+        <div class="ad-copy">
+          <div class="section-label">07 — ADVERTISE ON PINK DIAMOND</div>
+          <h2>Three placements.<br /><span>Priced plainly.</span></h2>
+          <p>Two vertical rails hold the sides of every page. One horizontal unit sits along the bottom. All three are sold through Google Ads and rotate through the booked sequence — an ad appears, stays, then hands off to the next.</p>
+          <div id="rate-card" class="rate-card"></div>
+          <div class="ad-legend">
+            <span><i class="legend-box is-black"></i> Black box — persistent, rotates in sequence</span>
+            <span><i class="legend-box is-grey"></i> Grey box — pop-up, dismissible with ×</span>
+          </div>
+          <div class="ad-note"><span class="ad-dot"></span><span>POWERED BY GOOGLE ADS · GOOGLE TAG FOR CONVERSIONS</span></div>
+          <div class="ad-platforms">
+            <span class="ad-platforms-label">WE RUN CAMPAIGNS ON</span>
+            <div class="platform-chips"><b>TIKTOK ADS</b><b>INSTAGRAM ADS</b><b>REDDIT ADS</b><b>YOUTUBE ADS</b></div>
+          </div>
+          <a class="underlined-link" href="mailto:ads@pinkdiamond.ai?subject=Pink%20Diamond%20media%20kit">Request the media kit <span>↗</span></a>
+        </div>
+        <div class="ad-stage">
+          <div class="ad-window glass">
+            <div class="ad-window-top"><span>POP-UP / SPONSORED</span><button aria-label="Dismiss ad">×</button></div>
+            <div class="ad-window-content">
+              <div class="ad-product-mark">N°<br />01</div>
+              <div><span>THIS IS A GREY BOX</span><h3>Dismiss it with<br /><em>a single ×.</em></h3><a href="#advertise">Discover <span>↗</span></a></div>
+            </div>
+          </div>
+          <div class="ad-caption">POP-UPS ARE CAPPED · TWO PER SESSION</div>
+        </div>
+      </section>
+
+      <section class="final-cta"><div class="final-diamond"></div><div class="section-label">08 — YOUR NEXT MOVE</div><h2>Make it<br /><em>count.</em></h2><p>The workspace for people who want their tools to feel as thoughtful as their work.</p><button class="primary-button magnetic gravity" data-launch-agent>Enter Pink Diamond <span>↗</span></button></section>
+    </main>
+
+    <footer class="site-footer"><a class="brand" href="#top"><img class="brand-logo footer-logo" src="pink-diamond-logo.svg" alt="Pink Diamond" /></a><span>© 2026 PINK DIAMOND / CUT FOR CLARITY</span><div><a href="#security">Privacy</a><a href="#plans">Plans</a><a href="#top">Back to top ↑</a></div></footer>
+  </div>
+
+  <!-- ============ AGENT OVERLAY (full-screen chat) ============ -->
+  <div class="agent-overlay" id="agent" aria-hidden="true">
+    <div class="agent-shell glass">
+      <aside class="agent-sidebar">
+        <div class="agent-model-row"><span>model:</span> <button id="agent-model" class="agent-model">Nano Banana Pro</button></div>
+        <button class="agent-heat" data-unfiltered-toggle role="switch" aria-checked="false">
+          <span class="agent-heat-switch"><span class="heat-knob"></span></span>
+          <span class="agent-heat-text"><b>Unfiltered</b><small id="agent-heat-sub">off · +$18/mo</small></span>
+        </button>
+        <nav class="agent-nav">
+          <button class="agent-nav-item active" data-agent-view="chat"><i>💬</i> New Chat</button>
+          <button class="agent-nav-item" data-agent-view="conversations"><i>🕓</i> Conversations</button>
+          <button class="agent-nav-item" data-agent-view="packages"><i>◈</i> Packages</button>
+          <button class="agent-nav-item" data-agent-view="models"><i>❖</i> Models</button>
+          <button class="agent-nav-item" data-agent-view="analytics"><i>📊</i> Analytics</button>
+          <button class="agent-nav-item" data-open-settings><i>⚙</i> Settings</button>
+          <button class="agent-nav-item" data-agent-view="help"><i>?</i> Help</button>
+        </nav>
+        <button class="agent-account" id="agent-account"><span class="agent-account-avatar">G</span><span class="agent-account-name">Guest</span><span class="agent-account-caret">›</span></button>
+      </aside>
+      <section class="agent-main">
+        <div class="agent-main-top"><div class="agent-title"><span class="mini-mark"></span> PINK DIAMOND <span class="agent-mode-tag" id="agent-mode-tag">FILTERED</span></div><button class="agent-close" data-close-agent aria-label="Close agent">×</button></div>
+        <div class="agent-messages" id="agent-messages">
+          <div class="agent-welcome"><img src="pink-diamond-logo.svg" alt="Pink Diamond" /><p>Ask anything. I read what you mean and answer with clarity.</p></div>
+        </div>
+        <form class="agent-input-bar glass" id="agent-form">
+          <input id="agent-input" type="text" placeholder="ask anything…" autocomplete="off" />
+          <button type="submit" class="agent-send magnetic" aria-label="Send">➤</button>
+        </form>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============ AUTH MODAL (email + password only, no Google) ============ -->
+  <div class="modal-backdrop" id="auth-modal" aria-hidden="true"><div class="modal-card glass"><button class="modal-close" data-close-modal aria-label="Close">×</button><div class="modal-kicker">PINK DIAMOND / <span id="modal-mode-label">WELCOME</span></div><h2 id="modal-title">Make room for<br /><em>better work.</em></h2><p id="modal-subtitle">Create your private facet in a few seconds.</p><form id="auth-form"><label>Email address<input type="email" name="email" placeholder="you@yourstudio.com" required /></label><label id="password-label">Password<input type="password" name="password" placeholder="••••••••" required minlength="6" /></label><button class="primary-button full magnetic" type="submit" id="auth-submit">Create facet <span>↗</span></button></form><div class="modal-switch"><span id="modal-switch-copy">Already have an account?</span><button type="button" id="modal-switch-button">Sign in</button></div><p class="modal-note">On creating an account you're issued a private API key — never shown to you — that connects Claude, OpenAI, Grok, Kimi, GLM, NVIDIA &amp; more via OpenRouter.</p></div></div>
+
+  <!-- ============ PROFILE / SETTINGS OVERLAY ============ -->
+  <div class="modal-backdrop" id="profile-modal" aria-hidden="true"><div class="modal-card profile-card glass"><button class="modal-close" data-close-modal aria-label="Close">×</button>
+    <div class="profile-tabs"><button class="active" data-profile-tab="info">Account</button><button data-profile-tab="settings">Settings</button></div>
+    <div class="profile-panel" data-panel="info">
+      <div class="profile-head"><span class="profile-avatar" id="profile-avatar">G</span><div><h3 id="profile-name">Guest</h3><span id="profile-email" class="profile-email">not signed in</span></div></div>
+      <div class="stat-grid">
+        <div class="stat glass"><span class="stat-label">SUBSCRIPTION</span><strong id="stat-tier">Free</strong></div>
+        <div class="stat glass"><span class="stat-label">MEMBER SINCE</span><strong id="stat-created">—</strong></div>
+        <div class="stat glass"><span class="stat-label">ACCOUNT AGE</span><strong id="stat-age">—</strong></div>
+        <div class="stat glass"><span class="stat-label">CREDITS USED</span><strong id="stat-credits">0</strong></div>
+      </div>
+      <div class="api-key-row glass"><span class="stat-label">PRIVATE API KEY</span><code id="stat-key">•••• •••• •••• hidden</code><span class="key-hint">issued · never shown</span></div>
+      <div class="timeline"><span class="stat-label">CREDIT TIMELINE</span><div class="timeline-bars" id="timeline-bars"></div></div>
+    </div>
+    <div class="profile-panel" data-panel="settings" hidden>
+      <div class="setting-row heat-setting"><div><strong>Unfiltered Mode <span class="heat-tag">18+</span></strong><p>Uncensored answers and adult creative output. Paid add-on, <b id="setting-heat-price">+$18/mo</b>.</p></div><div class="heat-setting-actions"><button class="revoke-link" id="revoke-adult" hidden>revoke 18+</button><button class="pill-toggle heat-pill-toggle" data-unfiltered-toggle aria-pressed="false"><span id="setting-heat-state">Off</span></button></div></div>
+      <div class="setting-row"><div><strong>Appearance</strong><p>Bright or dark facet.</p></div><button class="pill-toggle" id="theme-setting"><span>Dark</span></button></div>
+      <div class="setting-row"><div><strong>Change password</strong><p>Update your account password.</p></div><button class="ghost-button" id="change-pass">Change</button></div>
+      <div class="setting-row"><div><strong>Add models</strong><p>Enable more models from your provider.</p></div><button class="ghost-button" id="add-models">Manage</button></div>
+      <div class="setting-row"><div><strong>Switch account</strong><p>Sign into a different facet.</p></div><button class="ghost-button" id="switch-account">Switch</button></div>
+      <div class="setting-row danger"><div><strong>Delete account</strong><p>Permanently remove this account.</p></div><button class="ghost-button danger" id="delete-account">Delete</button></div>
+      <div class="setting-row"><div><strong>Sign out</strong><p>End this session.</p></div><button class="ghost-button" id="sign-out">Sign out</button></div>
+    </div>
+  </div></div>
+
+  <!-- ============ PAY AS YOU GO ============ -->
+  <div class="modal-backdrop" id="paygo-modal" aria-hidden="true"><div class="modal-card paygo-modal glass"><button class="modal-close" data-close-modal aria-label="Close">×</button><div class="modal-kicker">USAGE / FLEXIBLE</div><h2>Keep the<br /><em>momentum.</em></h2><p>Add credits to your facet whenever you need more runway. Your balance stays yours until you use it.</p><div class="usage-options"><button data-credits="10"><strong>$10</strong><span>100 credits</span></button><button data-credits="25"><strong>$25</strong><span>275 credits</span></button><button data-credits="50"><strong>$50</strong><span>600 credits</span></button></div></div></div>
+
+  <!-- ============ AD LAYOUT: one horizontal placement ($350) ============ -->
+  <div class="ad-leaderboard" aria-label="Advertisement">
+    <span class="ad-leaderboard-tag">AD · 728×90</span>
+    <div class="ad-box ad-box-black" data-placement="leaderboard"></div>
+  </div>
+
+  <!-- ============ 18+ GATE ============ -->
+  <div class="modal-backdrop" id="adult-modal" aria-hidden="true">
+    <div class="modal-card heat-modal glass">
+      <button class="modal-close" data-close-modal aria-label="Close">×</button>
+      <div class="modal-kicker">PINK DIAMOND / <span>AGE VERIFICATION</span></div>
+      <h2>Confirm you're<br /><em>over 18.</em></h2>
+      <p>Unfiltered Mode produces adult and explicit material. Confirm your age once and the agent stops holding back.</p>
+      <ul class="heat-terms">
+        <li>I am at least 18 years old and legally an adult where I live.</li>
+        <li>I understand output may be sexual, graphic, profane, or otherwise unfiltered.</li>
+        <li>I will not request sexual content involving minors, sexual imagery of real people, or genuine weapon, drug-synthesis or malware instruction. These stay blocked.</li>
+      </ul>
+      <label class="heat-check"><input type="checkbox" id="adult-consent" /> <span>I confirm all of the above.</span></label>
+      <button class="primary-button heat-button full magnetic" id="adult-continue" disabled>Continue <span>↗</span></button>
+      <p class="modal-note">Your confirmation is stored on your account. You can revoke it any time from Settings.</p>
+    </div>
+  </div>
+
+  <!-- ============ ADD-ON CHECKOUT ============ -->
+  <div class="modal-backdrop" id="addon-modal" aria-hidden="true">
+    <div class="modal-card heat-modal glass">
+      <button class="modal-close" data-close-modal aria-label="Close">×</button>
+      <div class="modal-kicker">ADD-ON / <span>UNFILTERED MODE</span></div>
+      <h2>One extra line<br /><em>on your bill.</em></h2>
+      <div class="addon-lines">
+        <div class="addon-line"><span>Current plan</span><b id="addon-plan">—</b></div>
+        <div class="addon-line"><span>Unfiltered Mode add-on</span><b id="addon-line-price">+$18.00</b></div>
+        <div class="addon-line addon-total"><span>New total</span><b id="addon-total">—</b></div>
+      </div>
+      <p class="addon-note">Charged on the same cycle as your plan. Half of every payment funds the private API key issued to your account — the same 50/50 split as the base subscription.</p>
+      <button class="primary-button heat-button full magnetic" id="addon-confirm">Enable Unfiltered Mode <span>↗</span></button>
+      <button class="text-button addon-cancel" data-close-modal>Not now</button>
+    </div>
+  </div>
+
+  <div class="toast" role="status" aria-live="polite"></div>
+  <script src="model-catalog.js"></script>
+  <script src="app.js"></script>
+  <script src="unfiltered.js"></script>
+  <script src="ads.js"></script>
+</body>
+</html>

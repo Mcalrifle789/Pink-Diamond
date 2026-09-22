@@ -1,10 +1,15 @@
 """SQLite access layer for Pink Diamond. Initializes from database/schema.sql."""
 
+import os
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "database" / "pink-diamond.db"
-SCHEMA_PATH = Path(__file__).resolve().parent.parent / "database" / "schema.sql"
+_DATA_DIR = Path(__file__).resolve().parent.parent / "database"
+
+# Serverless hosts (Vercel) mount the deployment read-only, so the db file has
+# to be relocatable. Locally this still resolves to database/pink-diamond.db.
+DB_PATH = Path(os.environ.get("PD_DB_PATH") or _DATA_DIR / "pink-diamond.db")
+SCHEMA_PATH = Path(os.environ.get("PD_SCHEMA_PATH") or _DATA_DIR / "schema.sql")
 
 
 def connect() -> sqlite3.Connection:
@@ -15,7 +20,7 @@ def connect() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    SCHEMA_PATH.parent.mkdir(parents=True, exist_ok=True)
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with connect() as conn:
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
 

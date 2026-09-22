@@ -7,3 +7,6 @@ node_modules/
 # Environment — never commit keys
 .env
 *.token
+
+# Vercel CLI link
+.vercel

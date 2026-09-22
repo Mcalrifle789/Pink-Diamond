@@ -7,10 +7,16 @@
   <title>Pink Diamond — an unfiltered AI agent for tasks &amp; creation</title>
   <meta name="description" content="Pink Diamond is a web-hosted AI agent for tasks, automation, and image &amp; video generation — with an optional paid Unfiltered Mode for adult, uncensored output." />
   <meta name="rating" content="adult" />
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="brand/icon-32.png" sizes="32x32" type="image/png" />
+  <link rel="icon" href="brand/icon-192.png" sizes="192x192" type="image/png" />
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png" />
   <meta property="og:title" content="Pink Diamond — unfiltered intelligence" />
   <meta property="og:description" content="The rose facet of the Diamond family. Toggle Unfiltered Mode as a paid add-on." />
   <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://pink-diamond-eight.vercel.app/brand/pd-og.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:image" content="https://pink-diamond-eight.vercel.app/brand/pd-og.jpg" />
 
   <!-- ===== Google Tag Manager (container id set in ads.js -> ADS.gtmId) ===== -->
   <script>
@@ -61,20 +67,9 @@
     <div class="vortex">
       <span class="vortex-ring"></span><span class="vortex-ring"></span>
       <span class="vortex-ring"></span><span class="vortex-ring"></span>
-      <div class="intro-gem" aria-hidden="true">
-        <svg viewBox="0 0 100 120" width="100" height="120">
-          <defs>
-            <linearGradient id="gemG" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#fff4fc"/><stop offset=".5" stop-color="#ffbce9"/><stop offset="1" stop-color="#f06fc0"/>
-            </linearGradient>
-          </defs>
-          <path d="M50 4 L92 46 L50 116 L8 46 Z" fill="url(#gemG)" opacity=".95"/>
-          <path d="M50 4 L92 46 L50 116 L8 46 Z" fill="none" stroke="#ffeaf8" stroke-width="1.2" opacity=".8"/>
-          <path d="M8 46 L92 46 M50 4 L50 116 M28 46 L50 116 L72 46 M28 46 L50 4 L72 46" stroke="#ffdbf3" stroke-width=".7" fill="none" opacity=".7"/>
-        </svg>
-      </div>
+      <span class="intro-gem pd-art pd-gem" aria-hidden="true"></span>
     </div>
-    <img class="intro-logo" src="pink-diamond-logo.svg" alt="Pink Diamond" />
+    <span class="intro-logo pd-art pd-wordmark" role="img" aria-label="Pink Diamond"></span>
     <div class="intro-tag">ENTERING THE FACET</div>
     <button class="intro-skip" id="intro-skip">Skip intro →</button>
   </div>
@@ -104,7 +99,7 @@
   <div class="page-shell">
     <header class="site-header">
       <a class="brand" href="#top" aria-label="Pink Diamond home">
-        <img class="brand-logo" src="pink-diamond-logo.svg" alt="Pink Diamond" />
+        <span class="brand-logo pd-art pd-lockup" role="img" aria-label="Pink Diamond"></span>
       </a>
       <nav class="main-nav" aria-label="Main navigation">
         <a href="#how-it-works">How it works</a>
@@ -307,7 +302,7 @@
       <section class="final-cta"><div class="final-diamond"></div><div class="section-label">08 — YOUR NEXT MOVE</div><h2>Make it<br /><em>count.</em></h2><p>The workspace for people who want their tools to feel as thoughtful as their work.</p><button class="primary-button magnetic gravity" data-launch-agent>Enter Pink Diamond <span>↗</span></button></section>
     </main>
 
-    <footer class="site-footer"><a class="brand" href="#top"><img class="brand-logo footer-logo" src="pink-diamond-logo.svg" alt="Pink Diamond" /></a><span>© 2026 PINK DIAMOND / CUT FOR CLARITY</span><div><a href="#security">Privacy</a><a href="#plans">Plans</a><a href="#top">Back to top ↑</a></div></footer>
+    <footer class="site-footer"><a class="brand" href="#top"><span class="brand-logo footer-logo pd-art pd-lockup" role="img" aria-label="Pink Diamond"></span></a><span>© 2026 PINK DIAMOND / CUT FOR CLARITY</span><div><a href="#security">Privacy</a><a href="#plans">Plans</a><a href="#top">Back to top ↑</a></div></footer>
   </div>
 
   <!-- ============ AGENT OVERLAY (full-screen chat) ============ -->
@@ -333,7 +328,7 @@
       <section class="agent-main">
         <div class="agent-main-top"><div class="agent-title"><span class="mini-mark"></span> PINK DIAMOND <span class="agent-mode-tag" id="agent-mode-tag">FILTERED</span></div><button class="agent-close" data-close-agent aria-label="Close agent">×</button></div>
         <div class="agent-messages" id="agent-messages">
-          <div class="agent-welcome"><img src="pink-diamond-logo.svg" alt="Pink Diamond" /><p>Ask anything. I read what you mean and answer with clarity.</p></div>
+          <div class="agent-welcome"><span class="pd-art pd-gem" role="img" aria-label="Pink Diamond"></span><p>Ask anything. I read what you mean and answer with clarity.</p></div>
         </div>
         <form class="agent-input-bar glass" id="agent-form">
           <input id="agent-input" type="text" placeholder="ask anything…" autocomplete="off" />

@@ -10,3 +10,6 @@ node_modules/
 
 # Vercel CLI link
 .vercel
+
+# local logo-build scratch
+.logowork/

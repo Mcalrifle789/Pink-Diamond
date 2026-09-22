@@ -26,6 +26,23 @@ html[data-theme="light"]{
   --btn-ink:#fff5fb; --btn-bg:#3a1830;
   --heat:#d81b76; --heat-soft:rgba(216,27,118,.12);
 }
+
+/* ---------- brand art ----------
+   Every mark is cut out of the master Pink Diamond key art (see
+   scripts/build-brand.py). Sized by height; the aspect ratio does the rest.
+   Light facets get the -ink build, where the near-white facets are re-mapped
+   into deep magenta so the gem still holds its shape on paper-coloured pages. */
+.pd-art{display:block;background-repeat:no-repeat;background-position:center;background-size:contain}
+.pd-lockup{aspect-ratio:997/224;background-image:url('brand/pd-lockup.png')}
+.pd-gem{aspect-ratio:307/512;background-image:url('brand/pd-gem.png')}
+.pd-wordmark{aspect-ratio:1598/224;background-image:url('brand/pd-wordmark.png')}
+html[data-theme="light"] .pd-lockup,html[data-theme="porcelain"] .pd-lockup,
+html[data-theme="candlelight"] .pd-lockup,html[data-theme="coral-dusk"] .pd-lockup{background-image:url('brand/pd-lockup-ink.png')}
+html[data-theme="light"] .pd-gem,html[data-theme="porcelain"] .pd-gem,
+html[data-theme="candlelight"] .pd-gem,html[data-theme="coral-dusk"] .pd-gem{background-image:url('brand/pd-gem-ink.png')}
+html[data-theme="light"] .pd-wordmark,html[data-theme="porcelain"] .pd-wordmark,
+html[data-theme="candlelight"] .pd-wordmark,html[data-theme="coral-dusk"] .pd-wordmark{background-image:url('brand/pd-wordmark-ink.png')}
+
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
@@ -49,7 +66,7 @@ html[data-theme="light"] .ambient{opacity:.14}
 .glass::after{content:'';position:absolute;inset:0;border-radius:inherit;background:linear-gradient(135deg,rgba(255,255,255,.10),transparent 30%,transparent 70%,rgba(255,180,230,.06));pointer-events:none}
 
 /* ============ INTRO OVERLAY ============ */
-.intro-overlay{position:fixed;inset:0;z-index:120;display:grid;place-items:center;background:radial-gradient(circle at 50% 45%,#200a18,#0b0308 70%);overflow:hidden;transition:opacity .8s ease,visibility .8s}
+.intro-overlay{position:fixed;inset:0;z-index:120;display:grid;place-items:center;align-content:center;background:radial-gradient(circle at 50% 45%,#200a18,#0b0308 70%);overflow:hidden;transition:opacity .8s ease,visibility .8s}
 .intro-overlay.done{opacity:0;visibility:hidden;pointer-events:none}
 .vortex{position:relative;width:340px;height:340px;display:grid;place-items:center}
 .vortex-ring{position:absolute;border:1px solid rgba(255,174,226,.34);border-radius:50%;border-top-color:rgba(255,226,246,.9);border-left-color:rgba(255,200,238,.5);animation:vortex-spin 2.6s cubic-bezier(.6,0,.2,1) infinite}
@@ -58,12 +75,12 @@ html[data-theme="light"] .ambient{opacity:.14}
 .vortex-ring:nth-child(3){width:172px;height:172px;animation-duration:1.7s}
 .vortex-ring:nth-child(4){width:104px;height:104px;animation-duration:1.2s;animation-direction:reverse}
 @keyframes vortex-spin{to{transform:rotate(360deg)}}
-.intro-gem{position:absolute;filter:drop-shadow(0 0 22px rgba(255,150,220,.7));animation:gem-dance 1.9s ease-in-out infinite}
+.intro-gem{position:absolute;height:198px;filter:drop-shadow(0 0 30px rgba(255,120,215,.62));animation:gem-dance 1.9s ease-in-out infinite}
 @keyframes gem-dance{0%,100%{transform:translateY(-6px) rotate(-8deg) scale(1)}25%{transform:translateY(3px) rotate(6deg) scale(1.05)}50%{transform:translateY(-3px) rotate(-4deg) scale(.98)}75%{transform:translateY(4px) rotate(8deg) scale(1.03)}}
-.intro-logo{position:absolute;height:96px;opacity:0;transform:scale(.2) rotate(-220deg);filter:blur(14px) drop-shadow(0 0 26px rgba(255,160,223,.6));animation:logo-vortex 1.5s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:1.25s}
+.intro-logo{width:min(560px,72vw);margin-top:-46px;opacity:0;transform:scale(.2) rotate(-220deg);filter:blur(14px) drop-shadow(0 0 26px rgba(255,160,223,.6));animation:logo-vortex 1.5s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:1.25s}
 @keyframes logo-vortex{0%{opacity:0;transform:scale(.2) rotate(-220deg);filter:blur(16px)}60%{opacity:1}100%{opacity:1;transform:scale(1) rotate(0);filter:blur(0) drop-shadow(0 0 26px rgba(255,160,223,.55))}}
-.intro-overlay.forming .vortex{animation:vortex-out 1s ease forwards;animation-delay:1.15s}
-@keyframes vortex-out{to{opacity:0;transform:scale(1.5) rotate(90deg)}}
+.intro-overlay.forming .vortex-ring{animation:vortex-out 1s ease forwards;animation-delay:1.15s}
+@keyframes vortex-out{to{opacity:0;transform:scale(1.6) rotate(90deg)}}
 .intro-tag{position:absolute;bottom:16%;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.42em;color:#c68fb3;opacity:0;animation:fade-in .8s ease forwards;animation-delay:2.2s}
 .intro-skip{position:absolute;bottom:26px;right:28px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;color:#ab7f9b;opacity:.7}
 .intro-skip:hover{color:#ffffff}
@@ -80,10 +97,11 @@ html[data-theme="light"] .ambient{opacity:.14}
 .site-header{height:92px;padding:0 5vw;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:15;backdrop-filter:blur(14px);background:linear-gradient(180deg,rgba(13,5,10,.72),rgba(13,5,10,.18));transition:background .5s}
 html[data-theme="light"] .site-header{background:linear-gradient(180deg,rgba(248,238,245,.8),rgba(248,238,245,.2))}
 .brand{display:flex;align-items:center}
-.brand-logo{height:40px;width:auto;display:block;filter:drop-shadow(0 0 12px rgba(255,150,218,.35));transition:filter .3s,transform .3s}
-html[data-theme="light"] .brand-logo{filter:drop-shadow(0 0 6px rgba(210,90,165,.3)) brightness(.35) contrast(1.4)}
-.brand:hover .brand-logo{filter:drop-shadow(0 0 18px rgba(255,180,230,.6));transform:translateY(-1px)}
-.footer-logo{height:28px}
+.brand-logo{height:44px;filter:drop-shadow(0 0 14px rgba(255,150,218,.34));transition:filter .3s,transform .3s}
+html[data-theme="light"] .brand-logo,html[data-theme="porcelain"] .brand-logo,
+html[data-theme="candlelight"] .brand-logo,html[data-theme="coral-dusk"] .brand-logo{filter:drop-shadow(0 1px 6px rgba(120,20,90,.22))}
+.brand:hover .brand-logo{filter:drop-shadow(0 0 20px rgba(255,180,230,.58));transform:translateY(-1px)}
+.footer-logo{height:30px;opacity:.9}
 .main-nav{display:flex;gap:36px;color:var(--muted);font-size:12px;letter-spacing:.03em;margin-left:auto;margin-right:44px}
 .main-nav a:hover{color:var(--ink)}
 .header-actions{display:flex;gap:16px;align-items:center}
@@ -309,7 +327,7 @@ h1 em,h2 span,blockquote em{color:var(--accent)}
 .agent-close{font-size:24px;color:var(--soft)}
 .agent-messages{flex:1;overflow-y:auto;padding:26px 30px;display:flex;flex-direction:column;gap:16px}
 .agent-welcome{margin:auto;text-align:center;opacity:.85}
-.agent-welcome img{height:40px;margin-bottom:16px;filter:drop-shadow(0 0 14px rgba(255,150,218,.4))}
+.agent-welcome .pd-gem{height:78px;margin:0 auto 18px;filter:drop-shadow(0 0 18px rgba(255,150,218,.42))}
 .agent-welcome p{color:var(--muted);font-size:13px;max-width:320px}
 .msg{max-width:74%;padding:13px 17px;font-size:14px;line-height:1.6;border-radius:16px;white-space:pre-wrap}
 .msg.user{align-self:flex-end;background:var(--btn-bg);color:var(--btn-ink);border-bottom-right-radius:5px}
@@ -393,11 +411,11 @@ html[data-theme="light"] .modal-card input{background:rgba(255,255,255,.7)}
   .header-actions{margin-left:auto}
   .menu-button{display:block}
   .section{padding:100px 7vw}
-  .brand-logo{height:34px}
+  .brand-logo{height:36px}
 }
 @media (max-width:560px){
   .site-header{height:72px}
-  .brand-logo{height:27px}.footer-logo{height:22px}
+  .brand-logo{height:30px}.footer-logo{height:24px}
   .header-cta{padding:10px 12px;font-size:9px;gap:8px}
   .theme-toggle{width:30px;height:30px}
   .hero-actions{flex-wrap:wrap;gap:14px}
@@ -414,4 +432,5 @@ html[data-theme="light"] .modal-card input{background:rgba(255,255,255,.7)}
 @media (prefers-reduced-motion:reduce){
   .refraction,.intro-gem,.vortex-ring,.intro-logo{animation:none!important}
   .intro-logo{opacity:1;transform:none;filter:none}
+  .intro-gem{animation:none!important}
 }

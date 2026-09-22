@@ -71,7 +71,7 @@ await page.click('#adult-continue');
 await page.waitForTimeout(700);
 check('add-on checkout appears', await page.locator('#addon-modal.open').isVisible());
 const total = await page.locator('#addon-total').innerText();
-check('Plus $20 + $18 = $38 total', /38\.00/.test(total), total);
+check('Plus $22.99 + $18 = $40.99 total', /40\.99/.test(total), total);
 await page.screenshot({ path: OUT + '/04-addon-checkout.png' });
 
 await page.click('#addon-confirm');

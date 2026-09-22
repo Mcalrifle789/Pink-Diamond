@@ -46,6 +46,23 @@ const VIDEO_MODELS = [
 ];
 
 
+const AUDIO_MODELS = [
+  { tier: 'Music · budget', note: 'Fast, cheap full tracks — great for volume work', models: [
+    ['Sapphire Skies', 'House demo track — “Echoes In Blue” plays in the studio bar'],
+    ['Lyria Flash', 'Google’s fast music model — loops and beds in seconds'],
+    ['Stable Audio 2.5', 'Sound beds and ambient textures at low credit cost'],
+  ]},
+  { tier: 'Music · mid-tier', note: 'Structured songs with vocals and arrangement', models: [
+    ['Udio 2.0', 'Full songs with coherent verse/chorus structure'],
+    ['Suno v6', 'Vocal-led tracks from a one-line prompt'],
+  ]},
+  { tier: 'Voice & SFX · premium', note: 'Speech, effects and mastering-grade output', models: [
+    ['ElevenLabs v3', 'Voice synthesis and dubbing with emotional range'],
+    ['AudioCraft SFX', 'Text-to-sound-effects for scene design'],
+    ['Topaz Audio Clean', 'Utility upmix / denoise pass for finished tracks'],
+  ]},
+];
+
 const UNCENSORED_MODELS = [
   { tier: 'Text · uncensored', note: 'Reached only while Unfiltered Mode is on', models: [
     ['Dolphin 3.0 R1', 'Instruction-tuned with the refusal layer removed — the default unfiltered brain'],
@@ -77,6 +94,7 @@ function renderCatalog() {
     <p>Every account routes through a private, never-shown key to the strongest image and video models. Free plans switch to open-weight models automatically. Unfiltered Mode adds a third rail of uncensored models.</p></div>
     ${block('IMAGE MODELS', IMAGE_MODELS)}
     ${block('VIDEO MODELS', VIDEO_MODELS)}
+    ${block('AUDIO MODELS', AUDIO_MODELS)}
     <div class="catalog-heat">
       <h3 class="catalog-title heat-title">UNCENSORED MODELS <span class="heat-tag">18+ ADD-ON</span></h3>
       <p class="catalog-heat-note">These are only routed to while <a href="#unfiltered">Unfiltered Mode</a> is enabled on a paid plan. Illegal categories stay blocked on every model here.</p>

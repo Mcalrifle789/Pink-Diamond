@@ -70,7 +70,7 @@ happen inside the API that holds the OpenRouter key.
 ### Pricing
 
 `+$18 / month` on top of any paid plan, repriced to `$14.40` under the yearly
-toggle to match the 20% yearly saving on plans. So `Plus $20 + $18 = $38/mo`.
+toggle to match the 20% yearly saving on plans. So `Plus $22.99 + $18 = $40.99/mo`.
 Change `HEAT.price` in `unfiltered.js` and `PINK_MODE_PRICE_CENTS` in
 `backend/main.py` together.
 
@@ -168,3 +168,37 @@ Backend: `python -m py_compile backend/*.py` passes; the ad-engine policy suite
 - Verify age properly if you operate where that is required; a checkbox is not
   age verification.
 - Fill in the four Google IDs and book the three ad slots.
+
+## Spec update (Sep 2026 — reference images + prompt/spec docs)
+
+The D:\VERCEL\PRIVATE VERCEL\PINK DIAMOND reference set (three UI mocks, the
+logo, and the handwritten prompt + product spec) is now implemented:
+
+- **Pricing** — Free (open-weight models), **Go $11.99, Plus $22.99, Pro
+  $33.99, Max $121.99** (handwritten prompt + product spec; the pricing mock's
+  Standard/Plus/Max figures disagree and were used for visuals only).
+- **Ten themes** — full re-tint palettes (Neon Rose default, Blush Porcelain,
+  Candlelight Peach, Coral Dawn, Midnight Bloom, Obsidian, Amethyst Haze,
+  Emerald Facet, Sapphire Facet, Ultraviolet). Saved per account locally and
+  via `PUT /api/theme` when the API origin is configured (`window.PINK_API`),
+  restored on sign-in.
+- **Personal API-key funding (50%)** — half of every plan payment and credit
+  pack funds the account's private key balance (`users.api_balance`,
+  `native/rust/pink-ledger` is the executable spec). Low/zero-balance notices
+  are first-class: inline agent notices plus `notice` in `/api/chat`.
+- **Audio generation** — `AUDIO_MODELS` in the catalog and a studio player bar
+  (shuffle / prev / play / next / repeat / seek / Generate) matching the
+  dashboard reference; WebAudio house tracks until real generation is wired.
+- **Continuous vortex background** — `vortex.js`, a slow rose particle swirl
+  on a single canvas, paused under reduced-motion.
+- **Scroll-pulsing diamond** — continuous rotation with a scroll-driven pulse
+  in scale and glow (degrades to scroll-only rotation under reduced motion).
+- **Native stubs per the language directive** — Rust funding ledger
+  (`native/rust/pink-ledger`, `cargo test`), C vortex kernel
+  (`native/c/vortex.c`), Swift `PinkDiamondKit.swift`, ObjC++ bridge.
+  The Omaris compiler was not found on this machine (`where.exe /R D:\`
+  found no match) — drop the toolchain path in and a starter `.omaris`
+  module can be added.
+
+Smoke test: `node verify.mjs` — 29/29 green after the update, including the
+repriced add-on checkout and a zero-console-error pass.

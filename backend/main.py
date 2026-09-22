@@ -22,7 +22,8 @@ from pydantic import BaseModel
 
 import database as db
 
-PLAN_CREDITS = {"port": 1000, "plus": 2000, "pro": 4500, "max": 12000}
+PLAN_PRICES_CENTS = {"go": 1199, "plus": 2299, "pro": 3399, "max": 12199}
+PLAN_CREDITS = {"go": 2000, "plus": 3500, "pro": 8300, "max": 16660}
 PINK_MODE_PRICE_CENTS = 1800          # +$18/mo add-on (see unfiltered.js HEAT.price)
 PINK_MODE_CREDIT_MULTIPLIER = 2       # 2 credits per message, per the site spec
 
@@ -134,14 +135,20 @@ def login(body: LoginBody):
 def me(user: dict = Depends(current_user)):
     created = datetime.fromisoformat(user["created_at"])
     longevity = (datetime.now(timezone.utc) - created).days
+    credits = user["credits"]
+    balance = user["api_balance"]
     return {
         "username": user["username"],
         "created_at": user["created_at"],
         "account_longevity_days": longevity,
         "plan": user["plan"],
         "pink_mode": bool(_pink_active(user["id"])),
-        "credits": user["credits"],
+        "credits": credits,
         "credits_used": user["credits_used"],
+        "api_balance": round(balance, 2),
+        "low_balance": balance <= 0.5,          # spec: notice when low or zero
+        "low_credits": credits <= 25,
+        "theme": user["theme"],
     }
 
 
@@ -155,13 +162,61 @@ class SubscribeBody(BaseModel):
 def subscribe(body: SubscribeBody, user: dict = Depends(current_user)):
     if body.plan not in PLAN_CREDITS:
         raise HTTPException(400, "Unknown plan")
-    db.run("UPDATE users SET plan=? WHERE id=?", (body.plan, user["id"]))
+    price_cents = PLAN_PRICES_CENTS[body.plan]
+    funded = price_cents / 200            # 50% of every payment funds the user's key
+    db.run("UPDATE users SET plan=?, api_balance=api_balance+? WHERE id=?", (body.plan, funded / 100, user["id"]))
     db.run(
-        "INSERT INTO subscriptions (user_id, kind, tier, renews_at) VALUES (?,?,?,?)",
-        (user["id"], "plan", body.plan, (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()),
+        "INSERT INTO subscriptions (user_id, kind, tier, amount_cents, renews_at) VALUES (?,?,?,?,?)",
+        (user["id"], "plan", body.plan, price_cents, (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()),
     )
-    # Wire real Stripe here; the credit grant stands in for paid fulfilment.
-    return {"plan": body.plan, "monthly_credits": PLAN_CREDITS[body.plan]}
+    db.run(
+        "INSERT INTO credit_timeline (user_id, delta, reason) VALUES (?,?,?)",
+        (user["id"], 0, f"plan payment — ${(funded / 100):.2f} funds the API key"),
+    )
+    return {
+        "plan": body.plan,
+        "monthly_credits": PLAN_CREDITS[body.plan],
+        "api_key_funding": {"amount": round(funded / 100, 2), "share": "50%"},
+    }
+
+
+class TopUpBody(BaseModel):
+    dollars: float  # pay-as-you-go top-up
+
+
+@app.post("/api/topup")
+def topup(body: TopUpBody, user: dict = Depends(current_user)):
+    if body.dollars <= 0:
+        raise HTTPException(400, "Top-up must be positive")
+    grant = body.dollars * 10
+    db.run(
+        "UPDATE users SET credits=credits+?, credits_used=credits_used+?, api_balance=api_balance+? WHERE id=?",
+        (grant, grant, body.dollars / 2, user["id"]),
+    )
+    db.run(
+        "INSERT INTO credit_timeline (user_id, delta, reason) VALUES (?,?,?)",
+        (user["id"], grant, f"top-up ${body.dollars:.2f} (50% funds API key)"),
+    )
+    return {"credits_added": grant, "api_key_funding": round(body.dollars / 2, 2)}
+
+
+@app.get("/api/theme")
+def get_theme(user: dict = Depends(current_user)):
+    return {"theme": user["theme"]}
+
+
+class ThemeBody(BaseModel):
+    theme: str
+
+
+@app.put("/api/theme")
+def set_theme(body: ThemeBody, user: dict = Depends(current_user)):
+    valid = {"neon-rose", "porcelain", "candlelight", "coral-dusk", "dark", "obsidian",
+             "amethyst", "emerald", "sapphire", "uviolet"}
+    if body.theme not in valid:
+        raise HTTPException(400, "Unknown theme")
+    db.run("UPDATE users SET theme=? WHERE id=?", (body.theme, user["id"]))
+    return {"theme": body.theme}  # restored by /api/me on every sign-in
 
 
 @app.post("/api/subscribe/pink-mode")
@@ -242,4 +297,14 @@ def chat(body: ChatBody, user: dict = Depends(current_user)):
         "INSERT INTO chat_messages (user_id, role, content, unfiltered) VALUES (?,?,?,1)",
         (user["id"], "agent", reply),
     )
-    return {"reply": reply, "unfiltered": unfiltered, "credits_charged": cost, "model": model}
+    # Low / zero balance notices are first-class product features (spec §4).
+    updated = db.one("SELECT credits, api_balance FROM users WHERE id=?", (user["id"],))
+    notice = None
+    if updated["credits"] <= 0:
+        notice = "You are out of credits — generation pauses until you top up or upgrade."
+    elif updated["credits"] <= 25:
+        notice = f"Low credits: {updated['credits']:.0f} remaining."
+    if updated["api_balance"] <= 0.5 and notice is None:
+        notice = "API key balance is low — half of every payment funds it; top up anytime."
+    return {"reply": reply, "unfiltered": unfiltered, "credits_charged": cost, "model": model,
+            "credits_left": updated["credits"], "api_balance": round(updated["api_balance"], 2), "notice": notice}

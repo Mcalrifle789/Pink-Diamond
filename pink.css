@@ -251,3 +251,60 @@ html.agent-open .ad-leaderboard{opacity:0;pointer-events:none;transition:opacity
 /* ---- the pop-up demo card reads as a grey box in both themes ---- */
 .ad-stage .ad-window{background:rgba(120,112,124,.18);border-color:rgba(160,150,165,.3)}
 html[data-theme="light"] .ad-stage .ad-window{background:rgba(70,60,72,.1)}
+
+/* ============================================================
+   TEN FACETS — theme system (spec: 10 themes, saved per account)
+   Default = Neon Rose (inherits :root). Each theme re-tints the
+   surface palette; brand pink stays in the signature themes.
+   ============================================================ */
+html[data-theme="dark"]{--night:#0a0710;--panel:#160d14;--ink:#f6e9f2;--muted:#b093a5;--line:rgba(255,196,232,.16);--electric:#f78fd0;--accent:#ff9ed8}
+html[data-theme="obsidian"]{--night:#050505;--panel:#101010;--ink:#f5eef2;--muted:#8f7d88;--line:rgba(255,255,255,.10);--glass-bg:rgba(18,18,20,.6);--glass-brd:rgba(255,143,214,.16);--electric:#ff8fd6;--accent:#ff8fd6;--ambient-filter:saturate(.6)}
+html[data-theme="obsidian"] .marble-bg{opacity:.25;filter:saturate(.5) brightness(.7)}
+html[data-theme="amethyst"]{--night:#0b0614;--panel:#171029;--ink:#f2e8fb;--muted:#a68fc2;--line:rgba(196,150,255,.18);--glass-bg:rgba(35,20,58,.55);--glass-brd:rgba(196,150,255,.24);--electric:#c48fff;--lilac:#d0a7ff;--ice:#e6d3ff;--accent:#b57bff}
+html[data-theme="amethyst"] .marble-bg{filter:hue-rotate(252deg) saturate(1.1)}
+html[data-theme="emerald"]{--night:#04100b;--panel:#0c1d15;--ink:#e8f5ee;--muted:#8fb8a2;--line:rgba(140,255,196,.16);--glass-bg:rgba(16,42,30,.5);--glass-brd:rgba(140,255,196,.2);--electric:#7fe8b6;--lilac:#a2f2d0;--ice:#c9ffe4;--accent:#4fd69a;--heat:#ff5fa8}
+html[data-theme="emerald"] .marble-bg{filter:hue-rotate(155deg) saturate(1.05)}
+html[data-theme="sapphire"]{--night:#050a14;--panel:#0c1526;--ink:#e8f0fb;--muted:#8fa6c8;--line:rgba(150,190,255,.18);--glass-bg:rgba(18,30,54,.55);--glass-brd:rgba(150,190,255,.24);--electric:#8fb8ff;--lilac:#a7c8ff;--ice:#d3e4ff;--accent:#5f8fdf;--heat:#ff6fae}
+html[data-theme="sapphire"] .marble-bg{filter:hue-rotate(195deg) saturate(1.1)}
+html[data-theme="uviolet"]{--night:#0d0418;--panel:#1b0c30;--ink:#f0e6fa;--muted:#a68fc8;--line:rgba(190,120,255,.2);--glass-bg:rgba(40,16,64,.55);--glass-brd:rgba(190,120,255,.26);--electric:#c06fff;--lilac:#a86bff;--ice:#e4c7ff;--accent:#9a4dff;--heat:#ff4fd8}
+html[data-theme="uviolet"] .marble-bg{filter:hue-rotate(248deg) saturate(1.35) brightness(.9)}
+html[data-theme="porcelain"]{--night:#fbf3f7;--panel:#ffffff;--ink:#241522;--muted:#83627a;--soft:#63415a;--line:rgba(110,45,85,.14);--glass-bg:rgba(255,255,255,.66);--glass-brd:rgba(222,130,190,.3);--glass-hi:rgba(255,255,255,.7);--electric:#d94fa8;--ice:#c04494;--accent:#c8348c;--card:rgba(255,255,255,.7);--btn-ink:#fff5fb;--btn-bg:#3a1830;--heat:#d81b76}
+html[data-theme="porcelain"] .marble-bg{opacity:.10;filter:invert(1) hue-rotate(292deg) saturate(1.1)}
+html[data-theme="candlelight"]{--night:#fdf6ee;--panel:#fffdf9;--ink:#2a201a;--muted:#93785f;--soft:#6b5443;--line:rgba(150,110,70,.18);--glass-bg:rgba(255,251,244,.66);--glass-brd:rgba(230,170,110,.32);--glass-hi:rgba(255,255,255,.75);--electric:#e08b4f;--lilac:#f0a868;--ice:#ffd9ae;--accent:#d97934;--card:rgba(255,255,255,.7);--btn-ink:#fff8f0;--btn-bg:#5a3a1f;--heat:#e0569f}
+html[data-theme="candlelight"] .marble-bg{opacity:.12;filter:invert(1) hue-rotate(120deg) saturate(.7) brightness(1.1)}
+html[data-theme="coral-dusk"]{--night:#fdf1ec;--panel:#fffaf7;--ink:#2a1d1a;--muted:#a1746a;--soft:#7a554d;--line:rgba(190,90,70,.16);--glass-bg:rgba(255,249,246,.66);--glass-brd:rgba(255,140,120,.3);--glass-hi:rgba(255,255,255,.75);--electric:#ff7a66;--lilac:#ff9e8a;--ice:#ffc9bc;--accent:#f2604a;--card:rgba(255,255,255,.7);--btn-ink:#fff5f2;--btn-bg:#5c2418;--heat:#d84f9c}
+html[data-theme="coral-dusk"] .marble-bg{opacity:.12;filter:invert(1) hue-rotate(150deg) saturate(.85)}
+html[data-theme="porcelain"] .ambient,html[data-theme="candlelight"] .ambient,html[data-theme="coral-dusk"] .ambient{opacity:.14}
+html[data-theme="emerald"] .ambient{background:#2fbd85!important}
+html[data-theme="sapphire"] .ambient{background:#4f7fdf!important}
+
+/* ghost select for the theme picker */
+.ghost-select{background:var(--glass-bg);color:var(--ink);border:1px solid var(--glass-brd);border-radius:10px;padding:8px 12px;font:inherit;max-width:220px}
+.ghost-select option{background:var(--panel);color:var(--ink)}
+
+/* notice bubble in the agent stream (low / zero balance) */
+.msg.notice{align-self:center;background:linear-gradient(135deg,rgba(255,184,228,.16),rgba(255,143,214,.08));border:1px solid var(--glass-brd);border-radius:14px;padding:10px 16px;font-size:13px;color:var(--soft);max-width:min(520px,86%);text-align:center}
+
+/* ============ STUDIO AUDIO BAR (reference: dashboard player) ============ */
+.audio-bar{grid-column:1/-1;display:flex;align-items:center;gap:14px;border-radius:18px;padding:10px 18px;margin-top:10px}
+.audio-art{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 32% 30%,var(--ice),var(--accent) 45%,#5c1d44);color:var(--btn-ink);font-size:18px;box-shadow:0 0 18px rgba(255,158,220,.45);flex:none}
+.audio-bar.playing .audio-art{animation:audio-pulse 1.1s ease-in-out infinite}
+@keyframes audio-pulse{50%{transform:scale(1.12);box-shadow:0 0 30px rgba(255,158,220,.7)}}
+.audio-meta{display:flex;flex-direction:column;min-width:150px}
+.audio-meta b{font-size:14px}
+.audio-meta small{color:var(--muted);font-size:11px;letter-spacing:.06em}
+.audio-controls{display:flex;align-items:center;gap:6px}
+.audio-ctrl{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:var(--soft);border:1px solid transparent;transition:.2s}
+.audio-ctrl:hover{color:var(--ink);border-color:var(--glass-brd);background:var(--glass-bg)}
+.audio-play{width:42px;height:42px;background:var(--btn-bg);color:var(--btn-ink);box-shadow:0 0 16px rgba(255,158,220,.4)}
+.audio-gen{width:auto;border-radius:20px;padding:0 14px;border:1px solid var(--glass-brd);font-size:12px;letter-spacing:.08em}
+.audio-progress{display:flex;align-items:center;gap:10px;flex:1;min-width:160px}
+.audio-time{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap}
+.audio-progress input[type=range]{flex:1;accent-color:var(--electric);height:4px}
+@media (max-width:900px){.audio-progress{display:none}.audio-gen{display:none}}
+@media (prefers-reduced-motion:reduce){.audio-bar.playing .audio-art{animation:none!important}}
+
+/* ============ VORTEX BACKGROUND CANVAS ============ */
+.vortex-bg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.8}
+html[data-theme="porcelain"] .vortex-bg,html[data-theme="candlelight"] .vortex-bg,html[data-theme="coral-dusk"] .vortex-bg{opacity:.45}
+@media (prefers-reduced-motion:reduce){.vortex-bg{display:none}}

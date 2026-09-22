@@ -81,6 +81,7 @@
 
   <!-- ============ BACKDROP LAYERS ============ -->
   <div class="marble-bg" aria-hidden="true"></div>
+  <canvas class="vortex-bg" id="vortex-bg" aria-hidden="true"></canvas>
   <div class="ambient ambient-one" aria-hidden="true"></div>
   <div class="ambient ambient-two" aria-hidden="true"></div>
 
@@ -338,6 +339,19 @@
           <input id="agent-input" type="text" placeholder="ask anything…" autocomplete="off" />
           <button type="submit" class="agent-send magnetic" aria-label="Send">➤</button>
         </form>
+        <div class="audio-bar glass" id="audio-bar" role="group" aria-label="Generated audio player">
+          <span class="audio-art" id="audio-art" aria-hidden="true">◈</span>
+          <div class="audio-meta"><b id="audio-title">Sapphire Skies</b><small id="audio-track">Echoes In Blue</small></div>
+          <div class="audio-controls">
+            <button class="audio-ctrl" data-audio="shuffle" aria-label="Shuffle">⤨</button>
+            <button class="audio-ctrl" data-audio="prev" aria-label="Previous">⏮</button>
+            <button class="audio-ctrl audio-play" data-audio="play" aria-label="Play or pause">▶</button>
+            <button class="audio-ctrl" data-audio="next" aria-label="Next">⏭</button>
+            <button class="audio-ctrl" data-audio="repeat" aria-label="Repeat">↻</button>
+          </div>
+          <div class="audio-progress"><span class="audio-time" id="audio-time">0:00</span><input type="range" id="audio-seek" min="0" max="100" value="0" aria-label="Seek" /><span class="audio-time" id="audio-duration">3:58</span></div>
+          <button class="audio-ctrl audio-gen" data-audio="generate" aria-label="Generate new track">✦ Generate</button>
+        </div>
       </section>
     </div>
   </div>
@@ -357,11 +371,12 @@
         <div class="stat glass"><span class="stat-label">CREDITS USED</span><strong id="stat-credits">0</strong></div>
       </div>
       <div class="api-key-row glass"><span class="stat-label">PRIVATE API KEY</span><code id="stat-key">•••• •••• •••• hidden</code><span class="key-hint">issued · never shown</span></div>
+      <div class="api-key-row glass"><span class="stat-label">API KEY BALANCE</span><code id="stat-api-balance">$0.00</code><span class="key-hint" id="api-balance-hint">50% of every payment funds this key</span></div>
       <div class="timeline"><span class="stat-label">CREDIT TIMELINE</span><div class="timeline-bars" id="timeline-bars"></div></div>
     </div>
     <div class="profile-panel" data-panel="settings" hidden>
       <div class="setting-row heat-setting"><div><strong>Unfiltered Mode <span class="heat-tag">18+</span></strong><p>Uncensored answers and adult creative output. Paid add-on, <b id="setting-heat-price">+$18/mo</b>.</p></div><div class="heat-setting-actions"><button class="revoke-link" id="revoke-adult" hidden>revoke 18+</button><button class="pill-toggle heat-pill-toggle" data-unfiltered-toggle aria-pressed="false"><span id="setting-heat-state">Off</span></button></div></div>
-      <div class="setting-row"><div><strong>Appearance</strong><p>Bright or dark facet.</p></div><button class="pill-toggle" id="theme-setting"><span>Dark</span></button></div>
+      <div class="setting-row"><div><strong>Appearance</strong><p>Ten facets. Your choice is saved to your account and restored on sign-in.</p></div><select id="theme-select" class="ghost-select"></select></div>
       <div class="setting-row"><div><strong>Change password</strong><p>Update your account password.</p></div><button class="ghost-button" id="change-pass">Change</button></div>
       <div class="setting-row"><div><strong>Add models</strong><p>Enable more models from your provider.</p></div><button class="ghost-button" id="add-models">Manage</button></div>
       <div class="setting-row"><div><strong>Switch account</strong><p>Sign into a different facet.</p></div><button class="ghost-button" id="switch-account">Switch</button></div>
@@ -416,6 +431,8 @@
 
   <div class="toast" role="status" aria-live="polite"></div>
   <script src="model-catalog.js"></script>
+  <script src="vortex.js"></script>
+  <script src="audio-studio.js"></script>
   <script src="app.js"></script>
   <script src="unfiltered.js"></script>
   <script src="ads.js"></script>

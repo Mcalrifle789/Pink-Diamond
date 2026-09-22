@@ -1,0 +1,10 @@
+[package]
+name = "pink-ledger"
+version = "0.1.0"
+edition = "2021"
+description = "Pink Diamond credit + API-key funding ledger (Rust core, per the language spec)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]

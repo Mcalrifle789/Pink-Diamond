@@ -9,10 +9,12 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT    NOT NULL,
     api_key_hash  TEXT    NOT NULL,                -- secret key: hashed, never shown to the user
     created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
-    plan          TEXT    NOT NULL DEFAULT 'free', -- free | port | plus | pro | max
+    plan          TEXT    NOT NULL DEFAULT 'free', -- free | go | plus | pro | max
     pink_mode     INTEGER NOT NULL DEFAULT 0,      -- 1 only while an active pink_mode subscription exists
     credits       REAL    NOT NULL DEFAULT 0,
-    credits_used  REAL    NOT NULL DEFAULT 0
+    credits_used  REAL    NOT NULL DEFAULT 0,
+    api_balance   REAL    NOT NULL DEFAULT 0,      -- personal API key balance: 50% of every payment funds it
+    theme         TEXT    NOT NULL DEFAULT 'neon-rose', -- one of 10 themes, restored on sign-in
 );
 
 CREATE TABLE IF NOT EXISTS subscriptions (

@@ -1,7 +1,7 @@
 'use strict';
 
 /* ============================================================
-   Pink Diamond — front-end app
+   Pink Diamond - front-end app
    ============================================================ */
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -33,31 +33,86 @@ window.showToast = showToast;
   $('#intro-skip')?.addEventListener('click', () => { clearTimeout(timer); finish(); });
 })();
 
-/* ============ THEME ============ */
+/* ============ THEME - ten facets, persisted per account ============ */
+const THEMES = [
+  { key: 'neon-rose',   label: 'Neon Rose (default)', group: 'Signature' },
+  { key: 'porcelain',   label: 'Blush Porcelain',     group: 'Light' },
+  { key: 'candlelight', label: 'Candlelight Peach',   group: 'Light' },
+  { key: 'coral-dusk',  label: 'Coral Dawn',          group: 'Light' },
+  { key: 'dark',        label: 'Midnight Bloom',      group: 'Dark' },
+  { key: 'obsidian',    label: 'Obsidian',            group: 'Dark' },
+  { key: 'amethyst',    label: 'Amethyst Haze',       group: 'Dark' },
+  { key: 'emerald',     label: 'Emerald Facet',       group: 'Dark' },
+  { key: 'sapphire',    label: 'Sapphire Facet',      group: 'Dark' },
+  { key: 'uviolet',     label: 'Ultraviolet',         group: 'Signature' },
+];
 function applyTheme(theme) {
+  if (!THEMES.some(t => t.key === theme)) theme = 'neon-rose';
   document.documentElement.setAttribute('data-theme', theme);
   document.body.setAttribute('data-theme', theme);
   store.set('pk_theme', theme);
-  const icon = $('.theme-icon'); if (icon) icon.textContent = theme === 'dark' ? '◐' : '◑';
-  const ts = $('#theme-setting'); if (ts) ts.querySelector('span').textContent = theme === 'dark' ? 'Dark' : 'Bright';
+  const sel = $('#theme-select'); if (sel) sel.value = theme;
+  const ts = $('#theme-setting'); if (ts) ts.querySelector('span').textContent =
+    (THEMES.find(t => t.key === theme) || THEMES[0]).label;
 }
-applyTheme(store.get('pk_theme', 'dark'));
-$('#theme-toggle')?.addEventListener('click', () =>
-  applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+function setTheme(theme) {
+  applyTheme(theme);
+  const user = currentUser();
+  if (user) {
+    const a = accounts(); if (a[user.email]) { a[user.email].theme = theme; saveAccounts(a); }
+    // Server-side persistence (best-effort; only when the API origin is set,
+    // so the pure-static deployment stays console-clean).
+    if (window.PINK_API) fetch(window.PINK_API + '/api/theme', { method: 'PUT',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ theme }) }).catch(() => {});
+  }
+}
+applyTheme(store.get('pk_theme', 'neon-rose'));
+$('#theme-toggle')?.addEventListener('click', () => {
+  const i = THEMES.findIndex(t => t.key === document.documentElement.getAttribute('data-theme'));
+  setTheme(THEMES[(i + 1) % THEMES.length].key);
+});
+$('#theme-select')?.addEventListener('change', e => setTheme(e.target.value));
+(function populateThemeSelect() {
+  const sel = $('#theme-select'); if (!sel) return;
+  let group = '';
+  THEMES.forEach(t => {
+    if (t.group !== group) { group = t.group; const og = document.createElement('optgroup'); og.label = group; og.dataset.group = group; sel.appendChild(og); }
+    const o = document.createElement('option'); o.value = t.key; o.textContent = t.label;
+    sel.querySelector(`optgroup[label="${t.group}"]`).appendChild(o);
+  });
+  sel.value = document.documentElement.getAttribute('data-theme');
+})();
 
-/* ============ SCROLL DIAMOND (spins by scroll direction) ============ */
+/* ============ SCROLL DIAMOND (continuous spin, scroll-driven pulse) ============ */
 (function scrollDiamond() {
   const el = $('.scroll-diamond');
   if (!el) return;
   const svg = el.querySelector('svg');
-  let last = window.scrollY, angle = 0;
+  let last = window.scrollY, angle = 0, spin = 0, pulse = 0;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let raf = null, lastT = 0;
+  function frame(t) {
+    const dt = Math.min((t - lastT) / 1000, 0.05); lastT = t;
+    spin += dt * 24;                                   // continuous rotation
+    pulse *= 0.92;                                     // decay the scroll impulse
+    const scale = 1 + Math.min(pulse, 0.6);
+    svg.style.transform = `rotate(${spin + angle}deg) scale(${scale})`;
+    svg.style.filter = `drop-shadow(0 0 ${6 + pulse * 18}px rgba(255,158,220,.55))`;
+    raf = requestAnimationFrame(frame);
+  }
   window.addEventListener('scroll', () => {
     const y = window.scrollY;
     const delta = y - last; last = y;
-    angle += delta * 0.4;                 // down => clockwise, up => counter-clockwise
-    svg.style.transform = `rotate(${angle}deg)`;
+    angle += delta * 0.4;                                 // direction-aware extra spin
+    pulse = Math.min(pulse + Math.abs(delta) / 160, 1.2); // pulse with scroll
     el.classList.toggle('show', y > 260);
   }, { passive: true });
+  if (reduced) {
+    // Reduced motion: rotate with scroll only, no continuous spin.
+    window.addEventListener('scroll', () => { svg.style.transform = `rotate(${angle}deg)`; }, { passive: true });
+    return;
+  }
+  lastT = performance.now(); raf = requestAnimationFrame(frame);
 })();
 
 /* ============ MAGNETIC + GRAVITY BUTTONS ============ */
@@ -132,8 +187,9 @@ $('#auth-form').addEventListener('submit', e => {
   const password = String(data.get('password'));
   const acc = accounts();
   if (authMode === 'signup') {
-    if (acc[email]) return showToast('That account already exists — try signing in.');
+    if (acc[email]) return showToast('That account already exists - try signing in.');
     acc[email] = { email, password, created: new Date().toISOString(), tier: 'Free', credits: 0, apiKey: makeKey(),
+      apiBalance: 0, theme: 'neon-rose',
       models: ['Nano Banana Pro', 'Seedance 2.5'], adult: false, unfiltered: false };
     saveAccounts(acc);
     store.set('pk_session', email);
@@ -143,6 +199,8 @@ $('#auth-form').addEventListener('submit', e => {
     if (!acc[email] || acc[email].password !== password) return showToast('Email or password not recognized.');
     store.set('pk_session', email);
     showToast(`Welcome back, ${email.split('@')[0]}.`);
+    // Restore the theme this account last chose — consistent across devices.
+    if (acc[email].theme) applyTheme(acc[email].theme);
   }
   e.target.reset();
   closeModal(authModal);
@@ -171,6 +229,10 @@ function openProfile() {
   $('#stat-created').textContent = fmtDate(user.created);
   $('#stat-age').textContent = ageString(user.created);
   $('#stat-credits').textContent = user.credits;
+  $('#stat-api-balance').textContent = `$${(user.apiBalance || 0).toFixed(2)}`;
+  $('#api-balance-hint').textContent = (user.apiBalance || 0) <= 0.5
+    ? 'Low balance — top up or subscribe to keep generating'
+    : '50% of every payment funds this key';
   renderHeat();
   // credit timeline (deterministic-ish demo based on account)
   const bars = $('#timeline-bars'); bars.innerHTML = '';
@@ -219,20 +281,20 @@ $('#delete-account')?.addEventListener('click', () => {
 /* ============ PLANS (data-driven) ============ */
 const PLANS = [
   { key: 'Free', name: 'Free', price: 0, desc: 'Open-weight models. Feel the cut before you commit.',
-    images: 'Open-weight', videos: '—',
-    quota: ['<b>Open-weight</b> models only', 'Core workspace & agent', 'Limited daily usage', 'Upgrade anytime — keep your facet'] },
-  { key: 'Port', name: 'Port', price: 9.99, desc: 'A polished entry into creation.',
-    images: '~1,330', videos: '16',
-    quota: ['<b>~1,330</b> budget image gens', '~160 mid · ~67 premium · ~33 high-end', '<b>16</b> budget 5s videos', '8 mid · 3–4 premium videos'] },
-  { key: 'Plus', name: 'Plus', price: 20, featured: true, desc: 'The recommended everyday facet — Standard quotas.',
-    images: '~2,660', videos: '32',
-    quota: ['<b>~2,660</b> budget image gens', '~320 mid · ~133 premium · ~67 high-end', '<b>32</b> budget 5s videos', '16 mid · 5–8 premium videos'] },
-  { key: 'Pro', name: 'Pro', price: 45, desc: 'For people building at full speed.',
-    images: '~5,000', videos: '60',
-    quota: ['<b>~5,000</b> budget image gens', '~600 mid · ~250 premium · ~125 high-end', '<b>60</b> budget 5s videos', '30 mid · 10–15 premium videos'] },
-  { key: 'Max', name: 'Max', price: 115, desc: 'Maximum brilliance, maximum output.',
-    images: '~16,660', videos: '200',
-    quota: ['<b>~16,660</b> budget image gens', '~2,000 mid · ~833 premium · ~417 high-end', '<b>200</b> budget 5s videos', '100 mid · 33–50 premium videos'] },
+    images: 'Open-weight', videos: '-',
+    quota: ['<b>Open-weight</b> models only', 'Core workspace & agent', 'Limited daily usage', 'Upgrade anytime - keep your facet'] },
+  { key: 'Go', name: 'Go', price: 11.99, desc: 'A polished entry into creation.',
+    images: '~2,000', videos: '8',
+    quota: ['<b>~2,000</b> budget image gens', '~240 mid · ~100 premium · ~50 high-end', '<b>8</b> 5s video gens', 'Core audio generation'] },
+  { key: 'Plus', name: 'Plus', price: 22.99, featured: true, desc: 'The recommended everyday facet.',
+    images: '~3,500', videos: '10-15',
+    quota: ['<b>~3,500</b> image gens', 'Balanced image, video and audio burn', '<b>10-15</b> 5s video gens', 'Full audio suite access'] },
+  { key: 'Pro', name: 'Pro', price: 33.99, desc: 'For people building at full speed.',
+    images: '~8,300', videos: '60',
+    quota: ['<b>~8,300</b> budget image gens', '~1,000 mid · ~415 premium · ~208 high-end', '<b>60</b> 5s video gens', 'Priority generation queue'] },
+  { key: 'Max', name: 'Max', price: 121.99, desc: 'Maximum brilliance, maximum output.',
+    images: '~16,660', videos: '33-50',
+    quota: ['<b>~16,660</b> budget image gens', '~2,000 mid · ~833 premium · ~417 high-end', '<b>33-50</b> 5s video gens', 'Everything, unlocked'] },
 ];
 let billing = 'monthly';
 function renderPlans() {
@@ -254,15 +316,23 @@ function renderPlans() {
   }).join('');
   $$('#plan-grid [data-plan]').forEach(b => b.addEventListener('click', () => {
     const plan = b.dataset.plan;
+    const price = PLANS.find(x => x.key === plan)?.price || 0;
     const user = currentUser();
     if (user) {
       const a = accounts(); a[user.email].tier = plan;
+      // API-key funding model: half of every payment funds the user's private key.
+      if (price > 0) {
+        a[user.email].apiBalance = (a[user.email].apiBalance || 0) + price / 2;
+        showToast(`${plan} active — $${(price / 2).toFixed(2)} added to your API key balance.`);
+      } else {
+        showToast(`${plan} is now your plan.`);
+      }
       if (plan === 'Free') { a[user.email].unfiltered = false; }
-      saveAccounts(a); showToast(`${plan} is now your plan.`);
-      window.PinkAds?.track('subscribe', { tier: plan, value: PLANS.find(x => x.key === plan)?.price || 0, currency: 'USD' });
+      saveAccounts(a);
+      window.PinkAds?.track('subscribe', { tier: plan, value: price, currency: 'USD' });
       renderHeat();
     }
-    else { store.set('pk_pending_plan', plan); openAuth('signup'); showToast(`${plan} selected — create your facet to continue.`); }
+    else { store.set('pk_pending_plan', plan); openAuth('signup'); showToast(`${plan} selected - create your facet to continue.`); }
   }));
   // re-bind magnetic on freshly created buttons
   $$('#plan-grid .magnetic').forEach(bindMagnetic);
@@ -280,7 +350,7 @@ $$('.billing-toggle button').forEach(b => b.addEventListener('click', () => {
   billing = b.dataset.billing;
   renderPlans();
   renderHeat();
-  showToast(billing === 'yearly' ? 'Yearly billing — 20% saved.' : 'Monthly billing selected.');
+  showToast(billing === 'yearly' ? 'Yearly billing - 20% saved.' : 'Monthly billing selected.');
 }));
 renderPlans();
 
@@ -289,10 +359,10 @@ $('[data-paygo]')?.addEventListener('click', () => openModal('#paygo-modal'));
 $$('[data-credits]').forEach(b => b.addEventListener('click', () => {
   const c = Number(b.dataset.credits);
   const user = currentUser();
-  if (user) { const a = accounts(); a[user.email].credits = (a[user.email].credits || 0) + c * 10; saveAccounts(a); }
+  if (user) { const a = accounts(); a[user.email].credits = (a[user.email].credits || 0) + c * 10; a[user.email].apiBalance = (a[user.email].apiBalance || 0) + c / 2; saveAccounts(a); }
   closeModal($('#paygo-modal'));
   window.PinkAds?.track('creditPack', { value: c, currency: 'USD' });
-  showToast(`A $${c} credit pack was added.`);
+  showToast(`A $${c} credit pack was added — half of it funds your API key.`);
 }));
 
 /* ============ AGENT (chatbox + client-side AI) ============ */
@@ -312,7 +382,7 @@ $$('.agent-nav-item[data-agent-view]').forEach(b => b.addEventListener('click', 
   const view = b.dataset.agentView;
   const views = {
     conversations: 'Your saved conversations will appear here.',
-    packages: 'Packages bundle models and credits — Port, Standard, Pro, Max.',
+    packages: 'Packages bundle models and credits - Go, Plus, Pro, Max.',
     models: 'Image: Nano Banana Pro, Seedream 5, FLUX.2, GPT Image 2, Recraft V4.1 · Video: Kling 3.0, Seedance 2.5, Veo 3.1, Sora 2, Minimax Hailuo.',
     analytics: 'Usage analytics: credits, generations, and model mix over time.',
     help: 'Type a message below and Pink Diamond will respond. Ask for plans, drafts, ideas, or code.',
@@ -335,25 +405,33 @@ function addMsg(role, text) {
   messagesEl.scrollTop = messagesEl.scrollHeight;
   return el;
 }
+function addNotice(text) {
+  const el = document.createElement('div');
+  el.className = 'msg notice';
+  el.textContent = text;
+  messagesEl.appendChild(el);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return el;
+}
 
 /* --- small intent-aware responder --- */
 function agentReply(input) {
   const t = input.toLowerCase().trim();
   const has = (...w) => w.some(x => t.includes(x));
   if (has('hi', 'hello', 'hey', 'yo ') || t === 'hi' || t === 'hey')
-    return "Hello — I'm Pink Diamond. Tell me what you're working on and I'll help you cut it down to a clear next step.";
+    return "Hello - I'm Pink Diamond. Tell me what you're working on and I'll help you cut it down to a clear next step.";
   if (has('who are you', 'what are you', 'your name'))
   return "I'm Pink Diamond, a web-hosted AI agent for tasks, automation, and image & video creation. Think of me as a facet between your idea and the outcome.";
   if (has('price', 'plan', 'cost', 'subscription', 'how much'))
-    return "Five ways in: Free (open-weight models), Port $9.99, Plus $20 (recommended, Standard quotas), Pro $45, and Max $115 — each with image & video generation quotas, plus pay-as-you-go credits. Want the breakdown for one of them?";
+    return "Five ways in: Free (open-weight models), Go $11.99, Plus $22.99 (recommended), Pro $33.99, and Max $121.99 - each with image, video and audio generation quotas, plus pay-as-you-go credits. Half of every payment funds your private API key. Want the breakdown for one of them?";
   if (has('image', 'picture', 'photo', 'render', 'draw', 'generate an'))
-    return "For images I route to models like Nano Banana Pro, Seedream 5, FLUX.2, or GPT Image 2 depending on quality and budget. Describe the shot — subject, style, mood — and I'll turn it into a generation-ready prompt.";
+    return "For images I route to models like Nano Banana Pro, Seedream 5, FLUX.2, or GPT Image 2 depending on quality and budget. Describe the shot - subject, style, mood - and I'll turn it into a generation-ready prompt.";
   if (has('video', 'clip', 'animation', 'motion'))
     return "For 5-second clips I can reach Kling 3.0, Seedance 2.5, Veo 3.1 or Sora 2. Give me the scene and pacing and I'll storyboard it, then draft the generation prompt.";
   if (has('plan', 'roadmap', 'strategy', 'launch'))
     return "Here's a shape you can steal: 1) Frame the goal and success metric. 2) List the 3 hardest unknowns. 3) Assign an owner + date to each. Tell me the project and I'll fill it in.";
   if (has('write', 'draft', 'email', 'copy', 'post'))
-    return "Happy to draft it. Give me the audience, the one thing they should do after reading, and the tone — and I'll write a first version you can trim.";
+    return "Happy to draft it. Give me the audience, the one thing they should do after reading, and the tone - and I'll write a first version you can trim.";
   if (has('code', 'bug', 'function', 'python', 'javascript', 'typescript', 'error'))
     return "Share the snippet and what you expected vs. what happened. I'll read it, explain the likely cause, and give you a corrected version.";
   if (has('summar', 'tl;dr', 'shorten'))
@@ -362,7 +440,7 @@ function agentReply(input) {
     return "Anytime. Bring me the next messy middle whenever you're ready.";
   if (t.endsWith('?'))
     return `Good question. Here's how I'd approach "${input.trim()}": start from what a great answer looks like, work backward to the facts you'd need, then close the gaps one at a time. Want me to go deeper on any part?`;
-  return `Got it — "${input.trim()}". I read that as a task to move forward. The clearest next step is to name the outcome you want, then I'll break it into the two or three moves that get you there. What does "done" look like?`;
+  return `Got it - "${input.trim()}". I read that as a task to move forward. The clearest next step is to name the outcome you want, then I'll break it into the two or three moves that get you there. What does "done" look like?`;
 }
 
 $('#agent-form')?.addEventListener('submit', e => {
@@ -372,7 +450,7 @@ $('#agent-form')?.addEventListener('submit', e => {
   if (!text) return;
   addMsg('user', text);
   input.value = '';
-  const typing = addMsg('ai', isUnfiltered() ? 'Pink Diamond is thinking — unfiltered…' : 'Pink Diamond is thinking…');
+  const typing = addMsg('ai', isUnfiltered() ? 'Pink Diamond is thinking - unfiltered...' : 'Pink Diamond is thinking...');
   typing.classList.add('typing');
   setTimeout(() => {
     typing.remove();
@@ -382,6 +460,12 @@ $('#agent-form')?.addEventListener('submit', e => {
       const a = accounts();
       a[user.email].credits = (a[user.email].credits || 0) + (isUnfiltered() ? HEAT.creditCost : 1);
       saveAccounts(a);
+      // Low / zero balance notice — a first-class product feature, not a nag.
+      const left = a[user.email].credits;
+      const bal = a[user.email].apiBalance || 0;
+      if (left <= 0) addNotice('You are out of credits. Generation pauses until you top up or upgrade.');
+      else if (left <= 25) addNotice(`Low credits: ${left} left. Top up from Plans → Pay as you go.`);
+      if (bal <= 0.5 && a[user.email].tier !== 'Free') addNotice('API key balance is low — half of every payment funds it. Top up anytime.');
     }
   }, 650 + Math.random() * 500);
 });

@@ -243,9 +243,17 @@ html.agent-open .ad-popup,
 html.agent-open .ad-rail,
 html.agent-open .ad-leaderboard{opacity:0;pointer-events:none;transition:opacity .25s}
 
-/* ---- the scroll diamond has to clear the left rail ---- */
+/* ---- the scroll diamond sits in the gutter beside the left rail ----
+   It used to sit at left:58px, i.e. inside the rail's 14px..186px band and a
+   stacking level below it, so the ad painted straight over it. Park it in the
+   gap between the rail and the page shell instead: centred in that gutter on
+   wide screens, but never allowed to slide back under the rail. */
 @media (min-width:1280px){
-  .scroll-diamond{top:auto;bottom:150px;transform:none;left:58px}
+  .scroll-diamond{
+    --rail-edge:186px;                            /* .ad-rail-left = 14px + 172px */
+    --shell-edge:max(200px,(100vw - 1400px)/2);   /* .page-shell's left edge */
+    left:max(calc(var(--rail-edge) + 12px),calc((var(--rail-edge) + var(--shell-edge))/2 - 22px));
+  }
 }
 
 /* ---- the pop-up demo card reads as a grey box in both themes ---- */

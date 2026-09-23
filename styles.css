@@ -87,7 +87,7 @@ html[data-theme="light"] .ambient{opacity:.14}
 @keyframes fade-in{to{opacity:1}}
 
 /* ---------- scroll diamond ---------- */
-.scroll-diamond{position:fixed;left:26px;top:50%;transform:translateY(-50%);width:44px;z-index:9;color:var(--electric);opacity:0;transition:opacity .5s;pointer-events:none}
+.scroll-diamond{position:fixed;left:26px;top:50%;transform:translateY(-50%);width:44px;z-index:12;color:var(--electric);opacity:0;transition:opacity .5s;pointer-events:none}
 .scroll-diamond.show{opacity:.62}
 .scroll-diamond svg{width:100%;filter:drop-shadow(0 0 8px rgba(255,158,220,.5));transition:transform .1s linear}
 .scroll-diamond-label{display:block;text-align:center;font-family:'DM Mono',monospace;font-size:7px;letter-spacing:.24em;color:var(--muted);margin-top:9px}

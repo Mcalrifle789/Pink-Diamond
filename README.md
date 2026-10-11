@@ -305,3 +305,9 @@ The Stripe webhook registers itself: with `PD_PUBLIC_URL` set, the first
 encrypted in the database (per Stripe key, so switching test → live keys
 registers again). Setting `STRIPE_WEBHOOK_SECRET` instead skips this.
 `/api/payments/config` reports `stripe_mode` (test/live) and `database`.
+
+**Test-mode safety:** with `sk_test_` keys anyone can pay with Stripe's public
+test card, so test payments are recorded and shown as Pink Credits but never
+fund a real OpenRouter key (limit stays $0). Only `sk_live_` keys fund
+OpenRouter; `PD_TEST_PAYMENTS_FUND_OPENROUTER=1` overrides this for private
+testing.

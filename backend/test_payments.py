@@ -21,6 +21,7 @@ os.environ.update({
     "STRIPE_SECRET_KEY": "sk_test_fake", "STRIPE_PUBLISHABLE_KEY": "pk_test_fake",
     "STRIPE_WEBHOOK_SECRET": "whsec_test_secret", "OPENROUTER_MANAGEMENT_KEY": "sk-or-mgmt-fake",
     "PD_KEY_ENCRYPTION_SECRET": "test-encryption-secret", "PD_SESSION_SECRET": "test-session-secret",
+    "PD_TEST_PAYMENTS_FUND_OPENROUTER": "1",   # the fakes stand in for live mode
 })
 os.environ.pop("PD_DEMO_BILLING", None)
 os.environ.pop("OPENROUTER_API_KEY", None)
@@ -415,3 +416,23 @@ def test_management_key_accepted_in_openrouter_api_key(monkeypatch):
     monkeypatch.setattr(ork, "_kind_cache", {})
     monkeypatch.setattr(ork, "key_info", lambda k: {"ok": True, "management": False, "label": "i"})
     assert ork.management_key() == "" and ork.shared_inference_key() == "sk-or-v1-mgmt-in-api-slot"
+
+
+def test_test_mode_payments_never_fund_openrouter(fakes, monkeypatch):
+    monkeypatch.delenv("PD_TEST_PAYMENTS_FUND_OPENROUTER")
+    headers, uid = account("testcard")
+    resp, _ = _subscribe_via_webhook(fakes, uid, sub_id="sub_testcard")
+    assert resp.status_code == 200
+    assert not any(c[0] == "POST" for c in fakes.openrouter.calls if c[1] == "/keys")   # no real key minted
+    bal = client.get("/api/balance", headers=headers).json()
+    assert bal["funded_cents"] == core.split_customer_cents(2299) and "not funded" in bal["source"]
+    # A key minted earlier is clamped back to zero.
+    monkeypatch.setenv("PD_TEST_PAYMENTS_FUND_OPENROUTER", "1")
+    ork.sync_limit(uid)
+    h = db.one("SELECT or_key_hash FROM users WHERE id=?", (uid,))["or_key_hash"]
+    assert fakes.openrouter.keys[h]["limit"] > 0
+    monkeypatch.delenv("PD_TEST_PAYMENTS_FUND_OPENROUTER")
+    client.get("/api/balance", headers=headers)
+    assert fakes.openrouter.keys[h]["limit"] == 0
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_live_fake")
+    assert ork.real_money() and ork.target_cents(1150) == 1150

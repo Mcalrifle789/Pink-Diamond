@@ -74,6 +74,21 @@ def shared_inference_key() -> str:
     return shared if shared and key_kind(shared) == "inference" else ""
 
 
+def real_money() -> bool:
+    """OpenRouter spend is real money, so only live-mode Stripe payments fund
+    it. Test-mode payments (anyone can pay with Stripe's public test card)
+    are recorded and shown, but never become OpenRouter credit unless
+    PD_TEST_PAYMENTS_FUND_OPENROUTER=1."""
+    if env("STRIPE_SECRET_KEY").startswith(("sk_live_", "rk_live_")):
+        return True
+    return env("PD_TEST_PAYMENTS_FUND_OPENROUTER") == "1"
+
+
+def target_cents(funded_cents: int) -> int:
+    """The OpenRouter limit a user's key should carry."""
+    return int(funded_cents) if real_money() else 0
+
+
 def configured() -> bool:
     return bool(env("PD_KEY_ENCRYPTION_SECRET") and management_key())
 
@@ -110,14 +125,14 @@ def _mgmt(method: str, path: str, **kwargs) -> dict:
 
 
 def sync_limit(user_id: int) -> None:
-    """Make the user's OpenRouter key exist with limit == funded_cents."""
+    """Make the user's OpenRouter key exist with limit == target_cents(funded_cents)."""
     with db.transaction() as conn:
         user = conn.execute(
             "SELECT id, or_key_hash, funded_cents FROM users WHERE id=? FOR UPDATE", (user_id,)
         ).fetchone()
         if user is None:
             raise KeyError_("unknown user")
-        limit = round(int(user["funded_cents"]) / 100, 2)
+        limit = round(target_cents(user["funded_cents"]) / 100, 2)
         if user["or_key_hash"]:
             _mgmt("PATCH", f"/keys/{user['or_key_hash']}", json={"limit": limit})
             return
@@ -150,12 +165,14 @@ def balance(user: dict) -> dict:
         try:
             data = _mgmt("GET", f"/keys/{user['or_key_hash']}").get("data") or {}
             limit = data.get("limit")
-            if limit is None or round(float(limit) * 100) != funded:
+            if limit is None or round(float(limit) * 100) != target_cents(funded):
                 sync_limit(user["id"])                        # heal a missed sync
             used = round(float(data.get("usage") or 0) * 100)
             result.update(source="openrouter", used_cents=used, remaining_cents=max(0, funded - used))
         except KeyError_:
             result["source"] = "ledger (OpenRouter unreachable)"
+    if not real_money():
+        result["source"] += " (test payments: not funded on OpenRouter)"
     result["credits"] = core.cents_to_credits(result["remaining_cents"])
     result["dollars"] = round(result["remaining_cents"] / 100, 2)
     result["low"] = result["remaining_cents"] <= 50

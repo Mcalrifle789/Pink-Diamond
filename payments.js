@@ -214,33 +214,89 @@
       const s = document.createElement('script');
       s.src = cfg.stripe_js;
       s.onload = () => resolve(window.Stripe);
-      s.onerror = () => reject(new Error('Stripe could not load'));
+      s.onerror = () => { stripeJs = null; reject(new Error('Stripe could not load')); };
       document.head.appendChild(s);
     });
     return stripeJs;
   }
 
+  function checkoutBody() {
+    return state.kind === 'topup' ? { amount_cents: state.amount } : {
+      plan: state.plan.toLowerCase(), interval: state.interval, uncensored: state.uncensored,
+      adult_confirmed: state.uncensored && $('#checkout-adult').checked, accept_auto_renewal: true,
+    };
+  }
+  const checkoutPath = () => (state.kind === 'topup' ? '/api/payments/checkout/topup' : '/api/payments/checkout/subscription');
+
+  /* The embedded checkout is an iframe from js.stripe.com. Ad blockers and
+     strict tracking protection can blank it, and until Stripe responds the
+     mount is a silent white box — so always say what is happening, and if the
+     iframe can't load, offer the same payment on Stripe's own hosted page. */
+  function showCheckoutLoading() {
+    const mount = $('#checkout-mount');
+    $('#checkout-review').hidden = true;
+    mount.hidden = false;
+    mount.innerHTML = '<div class="checkout-loading"><span class="checkout-spinner"></span>Connecting to Stripe…</div>';
+  }
+
+  function showCheckoutFallback(message) {
+    const mount = $('#checkout-mount');
+    mount.innerHTML = '';
+    const box = document.createElement('div');
+    box.className = 'checkout-fallback';
+    const p = document.createElement('p');
+    p.textContent = message;
+    const pay = document.createElement('button');
+    pay.type = 'button';
+    pay.textContent = 'Pay on a secure Stripe page ↗';
+    pay.addEventListener('click', async () => {
+      pay.disabled = true;
+      pay.textContent = 'Opening Stripe…';
+      try {
+        const r = await api(checkoutPath() + '?redirect=1', { method: 'POST', body: JSON.stringify(checkoutBody()) });
+        window.open(r.url, '_blank', 'noopener');
+        pay.textContent = 'Opened in a new tab — finish paying there.';
+        showToast('Finish the payment in the Stripe tab; this page updates when you return.');
+      } catch (err) {
+        pay.disabled = false;
+        pay.textContent = 'Pay on a secure Stripe page ↗';
+        showToast(err.message || 'Checkout could not start.');
+      }
+    });
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'checkout-back';
+    back.textContent = '← Back to review';
+    back.addEventListener('click', () => {
+      mount.hidden = true;
+      mount.innerHTML = '';
+      $('#checkout-review').hidden = false;
+      $('#checkout-continue').disabled = false;
+    });
+    box.append(p, pay, back);
+    mount.append(box);
+  }
+
   async function startLiveCheckout() {
     const btn = $('#checkout-continue');
     btn.disabled = true;
+    showCheckoutLoading();
     try {
       if (!token()) throw new Error('Your session expired — sign in again to pay.');
       const Stripe = await loadStripe();
       const stripe = Stripe(cfg.publishable_key);
-      const path = state.kind === 'topup' ? '/api/payments/checkout/topup' : '/api/payments/checkout/subscription';
-      const body = state.kind === 'topup' ? { amount_cents: state.amount } : {
-        plan: state.plan.toLowerCase(), interval: state.interval, uncensored: state.uncensored,
-        adult_confirmed: state.uncensored && $('#checkout-adult').checked, accept_auto_renewal: true,
-      };
       embedded = await stripe.createEmbeddedCheckoutPage({
-        fetchClientSecret: async () => (await api(path, { method: 'POST', body: JSON.stringify(body) })).client_secret,
+        fetchClientSecret: async () => (await api(checkoutPath(), { method: 'POST', body: JSON.stringify(checkoutBody()) })).client_secret,
       });
-      $('#checkout-review').hidden = true;
-      $('#checkout-mount').hidden = false;
+      const mount = $('#checkout-mount');
+      mount.innerHTML = '';
       embedded.mount('#checkout-mount');
     } catch (err) {
-      showToast(err.message || 'Checkout could not start.');
-      btn.disabled = false;
+      const reason = err.message || 'Checkout could not start.';
+      showToast(reason);
+      showCheckoutFallback(/could not load|blocked|network/i.test(reason)
+        ? 'Stripe could not load here — usually an ad blocker or privacy shield blocking it. You can pay on Stripe\'s own hosted page instead; nothing is stored on Pink Diamond either way.'
+        : reason + ' You can also pay on Stripe\'s own hosted page instead.');
     }
   }
 

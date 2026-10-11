@@ -182,6 +182,7 @@ class SubscriptionCheckout(BaseModel):
     uncensored: bool = False
     accept_auto_renewal: bool = False  # the explicit renewal consent checkbox
     adult_confirmed: bool = False      # required for the Uncensored Mode add-on
+    redirect: bool = False             # hosted page in a new tab (fallback when embedded iframes are blocked)
 
 
 @router.post("/api/payments/checkout/subscription")
@@ -198,6 +199,31 @@ def checkout_subscription(body: SubscriptionCheckout, request: Request, user: di
         raise HTTPException(409, "You already have a subscription — change or cancel it in Manage billing")
 
     plan_cents = core.plan_price_cents(PLAN_PRICES_CENTS[body.plan], body.interval)
+    meta = {"pd_user_id": str(user["id"]), "plan": body.plan, "interval": body.interval,
+            "uncensored": "1" if body.uncensored else "0", "terms_version": TERMS_VERSION}
+    common = {
+        "customer": _customer_id(user),
+        "client_reference_id": str(user["id"]),
+        "line_items": _subscription_items(body, plan_cents),
+        "metadata": meta,
+        "subscription_data": {"metadata": meta},
+        "saved_payment_method_options": {"payment_method_save": "enabled"},
+    }
+    if body.redirect:
+        session = _stripe().checkout.Session.create(
+            mode="subscription", ui_mode="hosted", **common,
+            success_url=_origin(request) + "/?checkout={CHECKOUT_SESSION_ID}#plans",
+            cancel_url=_origin(request) + "/#plans",
+        )
+        return {"url": session.url, "session_id": session.id}
+    session = _stripe().checkout.Session.create(
+        mode="subscription", ui_mode="embedded_page", **common,
+        return_url=_origin(request) + "/?checkout={CHECKOUT_SESSION_ID}#plans",
+    )
+    return {"client_secret": session.client_secret, "session_id": session.id}
+
+
+def _subscription_items(body: SubscriptionCheckout, plan_cents: int) -> list[dict]:
     items = [{
         "quantity": 1,
         "price_data": {
@@ -217,24 +243,12 @@ def checkout_subscription(body: SubscriptionCheckout, request: Request, user: di
                 "product": _uncensored_product(_stripe()),
             },
         })
-    meta = {"pd_user_id": str(user["id"]), "plan": body.plan, "interval": body.interval,
-            "uncensored": "1" if body.uncensored else "0", "terms_version": TERMS_VERSION}
-    session = _stripe().checkout.Session.create(
-        mode="subscription",
-        ui_mode="embedded_page",
-        customer=_customer_id(user),
-        client_reference_id=str(user["id"]),
-        line_items=items,
-        metadata=meta,
-        subscription_data={"metadata": meta},
-        saved_payment_method_options={"payment_method_save": "enabled"},
-        return_url=_origin(request) + "/?checkout={CHECKOUT_SESSION_ID}#plans",
-    )
-    return {"client_secret": session.client_secret, "session_id": session.id}
+    return items
 
 
 class TopupCheckout(BaseModel):
     amount_cents: int
+    redirect: bool = False             # hosted page in a new tab (fallback when embedded iframes are blocked)
 
 
 @router.post("/api/payments/checkout/topup")
@@ -245,22 +259,31 @@ def checkout_topup(body: TopupCheckout, request: Request, user: dict = Depends(c
         raise HTTPException(400, "Top-ups are between $5 and $1,000")
     credits = core.cents_to_credits(body.amount_cents)
     meta = {"pd_user_id": str(user["id"]), "kind": "topup", "amount_cents": str(body.amount_cents)}
+    item = {
+        "quantity": 1,
+        "price_data": {
+            "currency": "usd",
+            "unit_amount": body.amount_cents,
+            "product_data": {"name": f"{credits:,} Pink Credits"},
+        },
+    }
+    common = {
+        "customer": _customer_id(user),
+        "client_reference_id": str(user["id"]),
+        "line_items": [item],
+        "metadata": meta,
+        "payment_intent_data": {"metadata": meta},
+        "saved_payment_method_options": {"payment_method_save": "enabled"},
+    }
+    if body.redirect:
+        session = _stripe().checkout.Session.create(
+            mode="payment", ui_mode="hosted", **common,
+            success_url=_origin(request) + "/?checkout={CHECKOUT_SESSION_ID}#plans",
+            cancel_url=_origin(request) + "/#plans",
+        )
+        return {"url": session.url, "session_id": session.id}
     session = _stripe().checkout.Session.create(
-        mode="payment",
-        ui_mode="embedded_page",
-        customer=_customer_id(user),
-        client_reference_id=str(user["id"]),
-        line_items=[{
-            "quantity": 1,
-            "price_data": {
-                "currency": "usd",
-                "unit_amount": body.amount_cents,
-                "product_data": {"name": f"{credits:,} Pink Credits"},
-            },
-        }],
-        metadata=meta,
-        payment_intent_data={"metadata": meta},
-        saved_payment_method_options={"payment_method_save": "enabled"},
+        mode="payment", ui_mode="embedded_page", **common,
         return_url=_origin(request) + "/?checkout={CHECKOUT_SESSION_ID}#plans",
     )
     return {"client_secret": session.client_secret, "session_id": session.id}

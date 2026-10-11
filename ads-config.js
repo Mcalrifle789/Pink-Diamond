@@ -14,6 +14,24 @@ window.ADS_CONFIG = {
   googleAdsId: 'AW-XXXXXXXXXX',   // Google Ads conversion tag
   ga4Id:       'G-XXXXXXXXXX',    // GA4 property (optional)
 
+  /* ---- Google AdSense -------------------------------------
+     Paste the publisher id from AdSense → Account → Settings, and
+     one display ad-unit id per placement (Ads → By ad unit). The
+     moment `client` stops matching the placeholder, adsbygoogle.js
+     loads and the three black boxes serve AdSense instead of house
+     creatives. Also replace the pub id in /ads.txt.
+     AdSense forbids refreshing ads without user interaction, so live
+     AdSense units are NOT rotated — the 30s rotation applies to house
+     creatives and to Ad Manager (GPT) slots, which allow refresh.    */
+  adsense: {
+    client: 'ca-pub-XXXXXXXXXXXXXXXX',
+    slots: {
+      'rail-left':   'XXXXXXXXXX',
+      'rail-right':  'XXXXXXXXXX',
+      'leaderboard': 'XXXXXXXXXX',
+    },
+  },
+
   /* ---- Google Ad Manager / Publisher Tag ------------------- */
   useGpt: true,
   networkCode: '/0000000/pink-diamond',   // GAM network + ad unit root
@@ -27,22 +45,22 @@ window.ADS_CONFIG = {
   },
 
   /* ---- Rate card ------------------------------------------
-     Priced per the Pink Diamond monetization spec.            */
+     Estimated monthly revenue per the AdSense update spec.     */
   rateCard: [
-    { id: 'rail-left',   label: 'Vertical — left rail',   size: '160×600', price: 400, kind: 'rotating' },
-    { id: 'rail-right',  label: 'Vertical — right rail',  size: '160×600', price: 400, kind: 'rotating' },
-    { id: 'leaderboard', label: 'Horizontal — bottom',    size: '728×90',  price: 350, kind: 'rotating' },
+    { id: 'rail-left',   label: 'Vertical — left sidebar',  size: '160×600', price: 445, kind: 'rotating' },
+    { id: 'rail-right',  label: 'Vertical — right sidebar', size: '160×600', price: 445, kind: 'rotating' },
+    { id: 'leaderboard', label: 'Horizontal — bottom banner', size: '728×90', price: 470, kind: 'rotating' },
     { id: 'popup',       label: 'Pop-up — dismissible',   size: '320×260', price: null, kind: 'popup' },
   ],
 
   /* ---- Placements -----------------------------------------
      `black` = persistent rotating slot (appears, stays, rotates
-               to the next ad in sequence)
+               to the next ad in sequence every 30 seconds)
      `grey`  = pop-up slot, dismissible via the × control      */
   placements: {
-    'rail-left':   { box: 'black', gptPath: '/rail-left-160x600',  sizes: [[160, 600]], rotateMs: 12000, startAt: 0 },
-    'rail-right':  { box: 'black', gptPath: '/rail-right-160x600', sizes: [[160, 600]], rotateMs: 15000, startAt: 2 },
-    'leaderboard': { box: 'black', gptPath: '/bottom-728x90',      sizes: [[728, 90], [970, 90]], rotateMs: 10000 },
+    'rail-left':   { box: 'black', gptPath: '/rail-left-160x600',  sizes: [[160, 600]], rotateMs: 30000, startAt: 0 },
+    'rail-right':  { box: 'black', gptPath: '/rail-right-160x600', sizes: [[160, 600]], rotateMs: 30000, startAt: 2 },
+    'leaderboard': { box: 'black', gptPath: '/bottom-728x90',      sizes: [[728, 90], [970, 90]], rotateMs: 30000 },
     'popup-a':     { box: 'grey',  gptPath: '/popup-320x260',      sizes: [[320, 260]], delayMs: 18000 },
     'popup-b':     { box: 'grey',  gptPath: '/popup-320x260',      sizes: [[320, 260]], scrollDepth: 0.55 },
   },
@@ -61,7 +79,7 @@ window.ADS_CONFIG = {
       { kicker: 'SPONSORED', title: 'Sound, handled.',    body: 'Licensed audio for every render you make.',   cta: 'Browse library' },
     ],
     horizontal: [
-      { kicker: 'SPONSORED', title: 'Your ad rotates here.', body: 'Bottom rail · 728×90 · $350 / month.',     cta: 'Book the slot' },
+      { kicker: 'SPONSORED', title: 'Your ad rotates here.', body: 'Bottom banner · 728×90 · est. $470 / month.', cta: 'Book the slot' },
       { kicker: 'SPONSORED', title: 'Reach the makers.',     body: 'Creators who render daily, not weekly.',   cta: 'Get the media kit' },
       { kicker: 'SPONSORED', title: 'Launch louder.',        body: 'One horizontal placement. Full attention.', cta: 'Reserve' },
     ],

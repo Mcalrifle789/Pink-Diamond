@@ -1,6 +1,6 @@
 /* ============================================================
    PINK DIAMOND — additions on top of the ported Diamond system
-   1. ad layout   (two vertical $400 rails, one $350 bottom unit,
+   1. ad layout   (two vertical est. $445 rails, one est. $470 bottom unit,
                    dismissible grey pop-ups, rate card)
    2. unfiltered  (the paid 18+ add-on: pill, switch, card, modals)
    ============================================================ */
@@ -26,7 +26,7 @@
 .ad-served{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-family:'DM Mono',monospace;
   font-size:7px;letter-spacing:.2em;color:#5d4e58}
 
-/* ---- the two vertical placements ($400 each) ---- */
+/* ---- the two vertical placements (est. $445/mo each) ---- */
 .ad-rail{position:fixed;top:118px;z-index:11;width:172px;display:flex;flex-direction:column;gap:8px}
 .ad-rail-left{left:14px}
 .ad-rail-right{right:14px}
@@ -34,7 +34,7 @@
 .ad-rail-tag,.ad-leaderboard-tag{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:.26em;
   color:var(--muted);opacity:.7}
 
-/* ---- the one horizontal placement ($350) ---- */
+/* ---- the one horizontal placement (est. $470/mo) ---- */
 .ad-leaderboard{position:fixed;bottom:0;left:0;right:0;z-index:12;display:flex;flex-direction:column;
   align-items:center;gap:4px;padding:8px 14px 10px;
   background:linear-gradient(180deg,rgba(8,6,10,0),rgba(8,6,10,.92) 55%);backdrop-filter:blur(10px)}
@@ -316,3 +316,48 @@ html[data-theme="sapphire"] .ambient{background:#4f7fdf!important}
 .vortex-bg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.8}
 html[data-theme="porcelain"] .vortex-bg,html[data-theme="candlelight"] .vortex-bg,html[data-theme="coral-dusk"] .vortex-bg{opacity:.45}
 @media (prefers-reduced-motion:reduce){.vortex-bg{display:none}}
+
+/* ============================================================
+   Update spec — agent chatbox glow, thinking diamond, model menu
+   ============================================================ */
+
+/* Chatbox: pink outline on hover; pink border + soft glow while focused.
+   :focus-within drops the glow the moment the input loses focus. */
+.agent-input-bar{--chat-ring:#ff6ec7;transition:border-color .2s ease,box-shadow .25s ease}
+.agent-input-bar:hover{border-color:var(--chat-ring);box-shadow:0 0 0 1px var(--chat-ring),0 20px 60px rgba(0,0,0,.35)}
+.agent-input-bar:focus-within{border-color:var(--chat-ring);
+  box-shadow:0 0 0 1px var(--chat-ring),0 0 16px 2px rgba(255,110,199,.45),0 0 44px 8px rgba(255,110,199,.18)}
+
+/* "thinking…" + the Pink Diamond gem pulsing to the right */
+.msg.ai.typing{display:inline-flex;align-items:center;gap:10px}
+.think-gem{width:14px;height:23px;flex:none;filter:brightness(1.35) drop-shadow(0 0 7px rgba(255,110,199,.9));
+  animation:pd-think-pulse 1.15s ease-in-out infinite}
+@keyframes pd-think-pulse{
+  0%,100%{transform:translateX(0) scale(.82);opacity:.6}
+  50%{transform:translateX(7px) scale(1.18);opacity:1}
+}
+@media (prefers-reduced-motion:reduce){
+  .think-gem{animation:pd-think-fade 1.6s ease-in-out infinite}
+  @keyframes pd-think-fade{0%,100%{opacity:.5}50%{opacity:1}}
+}
+
+/* Model picker (subscribers switch freely; everyone else sees locks) */
+.agent-sidebar{position:relative}
+.agent-model{cursor:pointer}
+.agent-model[aria-expanded="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.model-menu{position:absolute;top:44px;left:12px;right:-150px;z-index:30;border-radius:16px;padding:10px;
+  background:var(--panel);   /* opaque: backdrop blur doesn't apply inside the glass shell */
+  max-height:min(460px,70vh);display:flex;flex-direction:column;gap:8px}
+.model-menu[hidden]{display:none}
+.model-tabs{display:flex;gap:4px}
+.model-tabs button{flex:1;padding:7px 0;border-radius:10px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--muted)}
+.model-tabs button.active{background:var(--heat-soft);color:var(--ink)}
+.model-list{overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding-right:2px}
+.model-opt{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;padding:8px 10px;border-radius:10px;font-size:13px;color:var(--ink)}
+.model-opt:hover:not(:disabled){background:rgba(255,110,199,.12)}
+.model-opt.active{background:rgba(255,110,199,.16);box-shadow:inset 0 0 0 1px rgba(255,110,199,.45)}
+.model-opt:disabled{color:var(--muted);cursor:not-allowed;opacity:.7}
+.model-opt i{font-style:normal;font-size:11px;color:var(--accent)}
+.model-opt .model-lock{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.12em;padding:2px 6px;border-radius:6px;border:1px solid var(--glass-brd);color:var(--muted)}
+.model-sep{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--muted);padding:10px 10px 4px}
+.model-upsell{padding:10px;border-radius:12px;background:var(--btn-bg);color:var(--btn-ink);font-size:12px;font-weight:600}

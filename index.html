@@ -45,7 +45,21 @@
         gtag('config', C.googleAdsId);
         if (C.ga4Id) gtag('config', C.ga4Id);
       }
-      // Google Publisher Tag (on-site ad serving)
+      // Google AdSense (preferred on-site ad serving)
+      var AS = C.adsense || {};
+      if (AS.client && !/X{4}/.test(AS.client)) {
+        var m = document.createElement('meta');
+        m.name = 'google-adsense-account';
+        m.content = AS.client;
+        document.head.appendChild(m);
+        var s = document.createElement('script');
+        s.async = true;
+        s.crossOrigin = 'anonymous';
+        s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + AS.client;
+        document.head.appendChild(s);
+        return;   // AdSense owns the inventory; skip GPT
+      }
+      // Google Publisher Tag (Ad Manager serving)
       if (C.useGpt && C.networkCode && !/^\/0000/.test(C.networkCode)) {
         window.googletag = window.googletag || { cmd: [] };
         var t = document.createElement('script');
@@ -86,7 +100,7 @@
     <span class="scroll-diamond-label">SCROLL</span>
   </div>
 
-  <!-- ============ AD LAYOUT: two vertical placements ($400 each) ============ -->
+  <!-- ============ AD LAYOUT: left + right sidebar units (est. $445/mo each) ============ -->
   <aside class="ad-rail ad-rail-left" aria-label="Advertisement">
     <span class="ad-rail-tag">AD · 160×600</span>
     <div class="ad-box ad-box-black" data-placement="rail-left"></div>
@@ -274,13 +288,13 @@
         <div class="ad-copy">
           <div class="section-label">07 — ADVERTISE ON PINK DIAMOND</div>
           <h2>Three placements.<br /><span>Priced plainly.</span></h2>
-          <p>Two vertical rails hold the sides of every page. One horizontal unit sits along the bottom. All three are sold through Google Ads and rotate through the booked sequence — an ad appears, stays, then hands off to the next.</p>
+          <p>Two vertical rails hold the sides of every page. One horizontal unit sits along the bottom. All three are served through Google AdSense and change every 30 seconds — an ad appears, stays, then hands off to the next.</p>
           <div id="rate-card" class="rate-card"></div>
           <div class="ad-legend">
-            <span><i class="legend-box is-black"></i> Black box — persistent, rotates in sequence</span>
+            <span><i class="legend-box is-black"></i> Black box — persistent, rotates every 30s</span>
             <span><i class="legend-box is-grey"></i> Grey box — pop-up, dismissible with ×</span>
           </div>
-          <div class="ad-note"><span class="ad-dot"></span><span>POWERED BY GOOGLE ADS · GOOGLE TAG FOR CONVERSIONS</span></div>
+          <div class="ad-note"><span class="ad-dot"></span><span>POWERED BY GOOGLE ADSENSE · GOOGLE TAG FOR CONVERSIONS</span></div>
           <div class="ad-platforms">
             <span class="ad-platforms-label">WE RUN CAMPAIGNS ON</span>
             <div class="platform-chips"><b>TIKTOK ADS</b><b>INSTAGRAM ADS</b><b>REDDIT ADS</b><b>YOUTUBE ADS</b></div>
@@ -309,7 +323,8 @@
   <div class="agent-overlay" id="agent" aria-hidden="true">
     <div class="agent-shell glass">
       <aside class="agent-sidebar">
-        <div class="agent-model-row"><span>model:</span> <button id="agent-model" class="agent-model">Nano Banana Pro</button></div>
+        <div class="agent-model-row"><span>model:</span> <button id="agent-model" class="agent-model" aria-haspopup="listbox" aria-expanded="false" aria-controls="model-menu">Pink Diamond Lite</button></div>
+        <div class="model-menu glass" id="model-menu" hidden></div>
         <button class="agent-heat" data-unfiltered-toggle role="switch" aria-checked="false">
           <span class="agent-heat-switch"><span class="heat-knob"></span></span>
           <span class="agent-heat-text"><b>Unfiltered</b><small id="agent-heat-sub">off · +$18/mo</small></span>
@@ -383,7 +398,7 @@
   <!-- ============ PAY AS YOU GO ============ -->
   <div class="modal-backdrop" id="paygo-modal" aria-hidden="true"><div class="modal-card paygo-modal glass"><button class="modal-close" data-close-modal aria-label="Close">×</button><div class="modal-kicker">USAGE / FLEXIBLE</div><h2>Keep the<br /><em>momentum.</em></h2><p>Add credits to your facet whenever you need more runway. Your balance stays yours until you use it.</p><div class="usage-options"><button data-credits="10"><strong>$10</strong><span>100 credits</span></button><button data-credits="25"><strong>$25</strong><span>275 credits</span></button><button data-credits="50"><strong>$50</strong><span>600 credits</span></button></div></div></div>
 
-  <!-- ============ AD LAYOUT: one horizontal placement ($350) ============ -->
+  <!-- ============ AD LAYOUT: bottom banner unit (est. $470/mo) ============ -->
   <div class="ad-leaderboard" aria-label="Advertisement">
     <span class="ad-leaderboard-tag">AD · 728×90</span>
     <div class="ad-box ad-box-black" data-placement="leaderboard"></div>

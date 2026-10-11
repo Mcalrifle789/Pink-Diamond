@@ -1,6 +1,9 @@
 # Build artifacts
 core/build/
-backend/__pycache__/
+__pycache__/
+.pytest_cache/
+native/rust/*/target/
+native/go/*/orcheck*.exe
 database/*.db
 node_modules/
 

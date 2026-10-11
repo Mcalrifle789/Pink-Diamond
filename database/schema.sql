@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
     credits       REAL    NOT NULL DEFAULT 0,
     credits_used  REAL    NOT NULL DEFAULT 0,
     api_balance   REAL    NOT NULL DEFAULT 0,      -- personal API key balance: 50% of every payment funds it
-    theme         TEXT    NOT NULL DEFAULT 'neon-rose', -- one of 10 themes, restored on sign-in
+    theme         TEXT    NOT NULL DEFAULT 'neon-rose'  -- one of 10 themes, restored on sign-in
 );
 
 CREATE TABLE IF NOT EXISTS subscriptions (
@@ -45,19 +45,19 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     at         TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
--- Ad inventory per the monetization spec: two vertical rails at $400,
--- bottom horizontal at $350, dismissible grey pop-ups.
+-- Ad inventory per the AdSense update: two vertical rails at an estimated
+-- $445/mo each, bottom horizontal at $470/mo, dismissible grey pop-ups.
 CREATE TABLE IF NOT EXISTS ad_slots (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     placement  TEXT NOT NULL,                     -- rail_left | rail_right | bottom | popup
     box        TEXT NOT NULL,                     -- black | grey
-    price_usd  INTEGER NOT NULL DEFAULT 0,        -- 400 | 400 | 350 | 0
+    price_usd  INTEGER NOT NULL DEFAULT 0,        -- 445 | 445 | 470 | 0
     advertiser TEXT,
     active     INTEGER NOT NULL DEFAULT 1
 );
 
 INSERT OR IGNORE INTO ad_slots (placement, box, price_usd) VALUES
-    ('rail_left',  'black', 400),
-    ('rail_right', 'black', 400),
-    ('bottom',     'black', 350),
+    ('rail_left',  'black', 445),
+    ('rail_right', 'black', 445),
+    ('bottom',     'black', 470),
     ('popup',      'grey',  0);

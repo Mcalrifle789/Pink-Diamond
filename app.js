@@ -10,6 +10,11 @@ const store = {
   set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
 };
 
+/* Backend origin. `window.PINK_API` overrides; otherwise the HTTPS deployment
+   talks to its own /api and local static serving (http) stays offline. */
+const API = typeof window.PINK_API === 'string' ? window.PINK_API
+  : (location.protocol === 'https:' ? '' : null);
+
 /* ---------- toast ---------- */
 const toast = $('.toast');
 function showToast(msg) {
@@ -60,10 +65,11 @@ function setTheme(theme) {
   const user = currentUser();
   if (user) {
     const a = accounts(); if (a[user.email]) { a[user.email].theme = theme; saveAccounts(a); }
-    // Server-side persistence (best-effort; only when the API origin is set,
+    // Server-side persistence (best-effort; only when the API is reachable,
     // so the pure-static deployment stays console-clean).
-    if (window.PINK_API) fetch(window.PINK_API + '/api/theme', { method: 'PUT',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ theme }) }).catch(() => {});
+    if (API !== null && user.apiToken) fetch(API + '/api/theme', { method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + user.apiToken },
+      body: JSON.stringify({ theme }) }).catch(() => {});
   }
 }
 applyTheme(store.get('pk_theme', 'neon-rose'));
@@ -180,6 +186,22 @@ function openAuth(mode = 'signup') {
 $$('[data-open-auth]').forEach(b => b.addEventListener('click', () => openAuth(b.dataset.openAuth)));
 $('#modal-switch-button').addEventListener('click', () => openAuth(authMode === 'signup' ? 'signin' : 'signup'));
 
+/* Best-effort: mirror the account on the backend so a subscriber's chats can
+   be routed to OpenRouter. The local account keeps working if this fails. */
+function linkBackend(email, password) {
+  if (API === null) return;
+  const post = (path, body) => fetch(API + path, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then(r => (r.ok ? r.json() : Promise.reject(r.status)));
+  post('/api/login', { username: email, password })
+    .catch(() => post('/api/register', { username: email, email, password }))
+    .then(d => {
+      const a = accounts();
+      if (d?.token && a[email]) { a[email].apiToken = d.token; saveAccounts(a); }
+    })
+    .catch(() => {});
+}
+
 $('#auth-form').addEventListener('submit', e => {
   e.preventDefault();
   const data = new FormData(e.target);
@@ -202,10 +224,12 @@ $('#auth-form').addEventListener('submit', e => {
     // Restore the theme this account last chose — consistent across devices.
     if (acc[email].theme) applyTheme(acc[email].theme);
   }
+  linkBackend(email, password);
   e.target.reset();
   closeModal(authModal);
   refreshAuthUI();
   renderHeat();
+  renderModelPicker();
   const pending = store.get('pk_pending_heat', false);
   if (pending) { store.set('pk_pending_heat', false); setTimeout(requestUnfiltered, 400); }
 });
@@ -268,12 +292,12 @@ $('#add-models')?.addEventListener('click', () => {
   if (pick) { const a = accounts(); a[user.email].models = [...new Set([...(a[user.email].models || []), pick.trim()])]; saveAccounts(a); showToast(`Added ${pick.trim()} to your models.`); }
 });
 $('#switch-account')?.addEventListener('click', () => { closeModal($('#profile-modal')); openAuth('signin'); });
-$('#sign-out')?.addEventListener('click', () => { store.set('pk_session', null); closeModal($('#profile-modal')); refreshAuthUI(); renderHeat(); showToast('Signed out.'); });
+$('#sign-out')?.addEventListener('click', () => { store.set('pk_session', null); closeModal($('#profile-modal')); refreshAuthUI(); renderHeat(); renderModelPicker(); showToast('Signed out.'); });
 $('#delete-account')?.addEventListener('click', () => {
   const user = currentUser(); if (!user) return;
   if (confirm('Permanently delete this account? This cannot be undone.')) {
     const a = accounts(); delete a[user.email]; saveAccounts(a);
-    store.set('pk_session', null); closeModal($('#profile-modal')); refreshAuthUI(); renderHeat();
+    store.set('pk_session', null); closeModal($('#profile-modal')); refreshAuthUI(); renderHeat(); renderModelPicker();
     showToast('Account deleted.');
   }
 });
@@ -327,8 +351,9 @@ function renderPlans() {
       } else {
         showToast(`${plan} is now your plan.`);
       }
-      if (plan === 'Free') { a[user.email].unfiltered = false; }
+      if (plan === 'Free') { a[user.email].unfiltered = false; a[user.email].modelChoice = {}; }
       saveAccounts(a);
+      renderModelPicker();
       window.PinkAds?.track('subscribe', { tier: plan, value: price, currency: 'USD' });
       renderHeat();
     }
@@ -390,10 +415,85 @@ $$('.agent-nav-item[data-agent-view]').forEach(b => b.addEventListener('click', 
   if (views[view]) addMsg('ai', views[view]);
 }));
 
-$('#agent-model')?.addEventListener('click', () => {
-  const m = prompt('Choose a model:', $('#agent-model').textContent);
-  if (m) { $('#agent-model').textContent = m.trim(); showToast(`Model set to ${m.trim()}.`); }
+/* ============ MODEL SWITCHING (subscribers only) ============
+   An active plan unlocks every model across every agent. Free accounts and
+   guests stay on each agent's house model and never reach OpenRouter — the
+   backend enforces the same rule (_resolve_model, native/rust/pink-access). */
+const studioModels = groups => groups.flatMap(g => g.models.map(([name]) => ({ id: name, label: name })));
+const AGENTS = {
+  chat: { title: 'Chat', via: 'VIA OPENROUTER', house: { id: 'pink-diamond/lite', label: 'Pink Diamond Lite' }, models: [
+    { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
+    { id: 'anthropic/claude-sonnet-5.5', label: 'Claude Sonnet 5.5' },
+    { id: 'openai/gpt-5.5', label: 'GPT-5.5' },
+    { id: 'google/gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
+    { id: 'x-ai/grok-4.7', label: 'Grok 4.7' },
+    { id: 'deepseek/deepseek-v4-pro', label: 'DeepSeek V4 Pro' },
+    { id: 'meta-llama/llama-4-maverick', label: 'Llama 4 Maverick' },
+    { id: 'mistralai/mistral-large', label: 'Mistral Large' },
+  ] },
+  image: { title: 'Image', via: 'PREMIUM STUDIO', house: { id: 'house/open-image', label: 'Open-weight image' }, models: studioModels(IMAGE_MODELS) },
+  video: { title: 'Video', via: 'PREMIUM STUDIO', house: { id: 'house/open-video', label: 'Open-weight video' }, models: studioModels(VIDEO_MODELS) },
+  audio: { title: 'Audio', via: 'PREMIUM STUDIO', house: { id: 'house/open-audio', label: 'Open-weight audio' }, models: studioModels(AUDIO_MODELS) },
+};
+const isSubscribed = () => { const u = currentUser(); return !!u && u.tier !== 'Free'; };
+function modelChoice(agentKey) {
+  const ag = AGENTS[agentKey];
+  const id = isSubscribed() && currentUser().modelChoice?.[agentKey];
+  return ag.models.find(m => m.id === id) || ag.house;
+}
+let pickerAgent = 'chat';
+const modelMenu = $('#model-menu');
+function renderModelPicker() {
+  const btn = $('#agent-model');
+  const heat = typeof isUnfiltered === 'function' && isUnfiltered();   // unfiltered.js loads later
+  if (btn) btn.textContent = heat ? HEAT.models[0] : modelChoice('chat').label;
+  if (!modelMenu || modelMenu.hidden) return;
+  const sub = isSubscribed();
+  const ag = AGENTS[pickerAgent];
+  const current = modelChoice(pickerAgent).id;
+  const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const opt = (m, locked) => `<button type="button" class="model-opt${m.id === current ? ' active' : ''}" role="option"
+      aria-selected="${m.id === current}" data-model="${esc(m.id)}"${locked ? ' disabled aria-disabled="true"' : ''}>
+      <span>${esc(m.label)}</span>${locked ? '<i class="model-lock" title="Subscribers only">PAID</i>' : (m.id === current ? '<i>✓</i>' : '')}</button>`;
+  modelMenu.innerHTML = `
+    <div class="model-tabs" role="tablist">${Object.entries(AGENTS).map(([k, a]) =>
+      `<button type="button" role="tab" aria-selected="${k === pickerAgent}" class="${k === pickerAgent ? 'active' : ''}" data-model-agent="${k}">${a.title}</button>`).join('')}</div>
+    <div class="model-list" role="listbox" aria-label="${ag.title} models">
+      ${opt(ag.house, false)}
+      <div class="model-sep">${ag.via}${sub ? '' : ' · SUBSCRIBERS ONLY'}</div>
+      ${ag.models.map(m => opt(m, !sub)).join('')}
+    </div>
+    ${sub ? '' : '<button type="button" class="model-upsell" data-model-upsell>Subscribe to switch models <span>↗</span></button>'}`;
+}
+function toggleModelMenu(open = modelMenu.hidden) {
+  modelMenu.hidden = !open;
+  $('#agent-model')?.setAttribute('aria-expanded', String(open));
+  renderModelPicker();
+}
+$('#agent-model')?.addEventListener('click', e => { e.stopPropagation(); toggleModelMenu(); });
+modelMenu?.addEventListener('click', e => {
+  e.stopPropagation();
+  const tab = e.target.closest('[data-model-agent]');
+  if (tab) { pickerAgent = tab.dataset.modelAgent; return renderModelPicker(); }
+  if (e.target.closest('[data-model-upsell]')) {
+    toggleModelMenu(false);
+    closeAgent();
+    $('#plans')?.scrollIntoView({ behavior: 'smooth' });
+    return showToast(currentUser() ? 'Pick a plan to unlock every model.' : 'Create an account and pick a plan to unlock every model.');
+  }
+  const opt = e.target.closest('[data-model]');
+  if (!opt || opt.disabled) return;
+  const ag = AGENTS[pickerAgent];
+  const model = [ag.house, ...ag.models].find(m => m.id === opt.dataset.model);
+  if (!model || !isSubscribed()) return;
+  const a = accounts(), u = currentUser();
+  a[u.email].modelChoice = { ...(a[u.email].modelChoice || {}), [pickerAgent]: model.id };
+  saveAccounts(a);
+  renderModelPicker();
+  showToast(`${ag.title} model set to ${model.label}.`);
 });
+document.addEventListener('click', () => { if (modelMenu && !modelMenu.hidden) toggleModelMenu(false); });
+renderModelPicker();
 
 const messagesEl = $('#agent-messages');
 function addMsg(role, text) {
@@ -443,18 +543,55 @@ function agentReply(input) {
   return `Got it - "${input.trim()}". I read that as a task to move forward. The clearest next step is to name the outcome you want, then I'll break it into the two or three moves that get you there. What does "done" look like?`;
 }
 
-$('#agent-form')?.addEventListener('submit', e => {
+/* "thinking…" with the small pink diamond pulsing to its right */
+function addThinking() {
+  $('.agent-welcome')?.remove();
+  const el = document.createElement('div');
+  el.className = 'msg ai typing';
+  el.setAttribute('role', 'status');
+  const label = document.createElement('span');
+  label.textContent = isUnfiltered() ? 'Pink Diamond is thinking - unfiltered…' : 'Pink Diamond is thinking…';
+  const gem = document.createElement('span');
+  gem.className = 'think-gem pd-art pd-gem';
+  gem.setAttribute('aria-hidden', 'true');
+  el.append(label, gem);
+  messagesEl.appendChild(el);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return el;
+}
+
+/* Subscribers' chosen OpenRouter model, through the backend proxy. Resolves to
+   null whenever the live route isn't available so the house model answers. */
+async function liveReply(text, model) {
+  const user = currentUser();
+  if (API === null || !user?.apiToken || !isSubscribed() || model.id === AGENTS.chat.house.id) return null;
+  try {
+    const r = await fetch(API + '/api/chat', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + user.apiToken },
+      body: JSON.stringify({ message: text, model: model.id }) });
+    return r.ok ? ((await r.json()).reply || null) : null;
+  } catch { return null; }
+}
+let liveFallbackNoticed = false;
+
+$('#agent-form')?.addEventListener('submit', async e => {
   e.preventDefault();
   const input = $('#agent-input');
   const text = input.value.trim();
   if (!text) return;
   addMsg('user', text);
   input.value = '';
-  const typing = addMsg('ai', isUnfiltered() ? 'Pink Diamond is thinking - unfiltered...' : 'Pink Diamond is thinking...');
-  typing.classList.add('typing');
+  const typing = addThinking();
+  const model = modelChoice('chat');
+  const started = Date.now();
+  const live = await liveReply(text, model);
   setTimeout(() => {
     typing.remove();
-    addMsg('ai', isUnfiltered() ? unfilteredReply(text) : agentReply(text));
+    addMsg('ai', live ?? (isUnfiltered() ? unfilteredReply(text) : agentReply(text)));
+    if (live === null && model.id !== AGENTS.chat.house.id && !liveFallbackNoticed) {
+      liveFallbackNoticed = true;
+      addNotice(`${model.label} isn't connected yet — Pink Diamond Lite answered instead.`);
+    }
     const user = currentUser();
     if (user) {
       const a = accounts();
@@ -467,7 +604,7 @@ $('#agent-form')?.addEventListener('submit', e => {
       else if (left <= 25) addNotice(`Low credits: ${left} left. Top up from Plans → Pay as you go.`);
       if (bal <= 0.5 && a[user.email].tier !== 'Free') addNotice('API key balance is low — half of every payment funds it. Top up anytime.');
     }
-  }, 650 + Math.random() * 500);
+  }, Math.max(0, 650 + Math.random() * 500 - (Date.now() - started)));
 });
 
 /* ============ misc ============ */

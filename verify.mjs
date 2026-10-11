@@ -1,5 +1,7 @@
-/* Pink Diamond — end-to-end smoke test of the ad layout and the paid
-   Unfiltered Mode funnel. Run with:  node verify.mjs  (playwright required) */
+/* Pink Diamond — end-to-end smoke test of the ad layout, the paid
+   Unfiltered Mode funnel, and the update spec (chatbox glow, thinking
+   diamond, subscriber-only model switching).
+   Run with:  node verify.mjs  (playwright required) */
 import pw from 'file:///C:/Users/hextu/node_modules/playwright/index.js';
 const { chromium } = pw;
 
@@ -26,13 +28,69 @@ check('bottom leaderboard rendered', await page.locator('.ad-leaderboard .ad-box
 const rateRows = await page.locator('#rate-card .rate-row').count();
 check('rate card has 4 rows', rateRows === 4, 'got ' + rateRows);
 const prices = await page.locator('#rate-card .rate-price').allInnerTexts();
-check('rate card prices are $400/$400/$350', /400/.test(prices[0]) && /400/.test(prices[1]) && /350/.test(prices[2]), prices.join(' | '));
+check('rate card prices are $445/$445/$470', /445/.test(prices[0]) && /445/.test(prices[1]) && /470/.test(prices[2]), prices.join(' | '));
 
-/* rotation: the creative must change on its own */
+/* rotation: the creative holds for 30s, then changes on its own */
 const first = await page.locator('.ad-leaderboard .ad-title').innerText();
-await page.waitForTimeout(11000);
+await page.waitForTimeout(25000);
+const held = await page.locator('.ad-leaderboard .ad-title').innerText();
+check('bottom creative holds for the 30s window', held === first, `"${first}" -> "${held}"`);
+await page.waitForTimeout(6500);
 const second = await page.locator('.ad-leaderboard .ad-title').innerText();
-check('bottom placement rotates in sequence', first !== second, `"${first}" -> "${second}"`);
+check('bottom placement rotates every 30s', first !== second, `"${first}" -> "${second}"`);
+
+/* ---------- update spec: agent chatbox, thinking diamond, locked models ---------- */
+await page.click('.header-cta[data-launch-agent]');
+await page.waitForTimeout(800);
+const bar = page.locator('.agent-input-bar');
+await page.locator('#agent-input').evaluate(el => el.blur());   // opening the agent autofocuses it
+await page.mouse.move(5, 5);
+await page.waitForTimeout(350);
+const idleBorder = await bar.evaluate(el => getComputedStyle(el).borderTopColor);
+await bar.hover();
+await page.waitForTimeout(350);
+const hoverBorder = await bar.evaluate(el => getComputedStyle(el).borderTopColor);
+check('chatbox shows pink outline on hover', hoverBorder === 'rgb(255, 110, 199)' && idleBorder !== hoverBorder, idleBorder + ' -> ' + hoverBorder);
+await page.focus('#agent-input');
+await page.mouse.move(5, 5);
+await page.waitForTimeout(350);
+const focusShadow = await bar.evaluate(el => getComputedStyle(el).boxShadow);
+check('chatbox glows pink while focused', /rgba\(255, 110, 199, 0\.45\)/.test(focusShadow), focusShadow.slice(0, 80));
+await page.locator('#agent-input').evaluate(el => el.blur());
+await page.waitForTimeout(350);
+const blurShadow = await bar.evaluate(el => getComputedStyle(el).boxShadow);
+check('glow clears when the chatbox loses focus', !/255, 110, 199/.test(blurShadow), blurShadow.slice(0, 80));
+
+const guestModel = await page.locator('#agent-model').textContent();
+check("guest model is the house model", guestModel === "Pink Diamond Lite", JSON.stringify(guestModel));
+await page.click('#agent-model');
+await page.waitForTimeout(300);
+const lockedGuest = await page.locator('#model-menu .model-opt:disabled').count();
+check('guest sees OpenRouter models locked', lockedGuest === 8, 'locked ' + lockedGuest);
+check('guest gets the subscribe prompt', await page.locator('#model-menu [data-model-upsell]').isVisible());
+await page.screenshot({ path: OUT + '/10-models-locked.png' });
+await page.click('.agent-title');
+await page.waitForTimeout(200);
+check('model menu closes on outside click', await page.locator('#model-menu').isHidden());
+
+await page.fill('#agent-input', 'hello there');
+await page.click('.agent-send');
+await page.waitForTimeout(120);
+const gem = page.locator('.msg.ai.typing .think-gem');
+check('thinking diamond appears', await gem.isVisible());
+const geo = await page.evaluate(() => {
+  const t = document.querySelector('.msg.ai.typing');
+  const label = t.querySelector('span:not(.think-gem)').getBoundingClientRect();
+  const g = t.querySelector('.think-gem');
+  return { right: g.getBoundingClientRect().left >= label.right, anim: getComputedStyle(g).animationName, text: t.innerText };
+});
+check('diamond sits right of "thinking"', geo.right && /thinking/.test(geo.text), geo.text);
+check('diamond pulses', geo.anim === 'pd-think-pulse', geo.anim);
+await page.screenshot({ path: OUT + '/11-thinking-diamond.png' });
+await page.waitForTimeout(1600);
+check('thinking state replaced by a reply', (await page.locator('.msg.ai.typing').count()) === 0);
+await page.click('.agent-close');
+await page.waitForTimeout(500);
 
 await page.screenshot({ path: OUT + '/01-hero.png' });
 
@@ -103,6 +161,26 @@ await page.screenshot({ path: OUT + '/06-agent-unfiltered.png' });
 await page.click('.agent-heat');
 await page.waitForTimeout(700);
 check('agent switch turns it off', !(await page.locator('#agent.heat').isVisible()));
+
+/* ---------- subscriber switches models across agents ---------- */
+await page.click('#agent-model');
+await page.waitForTimeout(300);
+check('subscriber sees no locked models', (await page.locator('#model-menu .model-opt:disabled').count()) === 0);
+check('subscriber gets no upsell', (await page.locator('#model-menu [data-model-upsell]').count()) === 0);
+await page.click('#model-menu [data-model="openai/gpt-5.5"]');
+await page.waitForTimeout(200);
+check('chat model switches to GPT-5.5', (await page.locator('#agent-model').innerText()) === 'GPT-5.5');
+await page.click('#model-menu [data-model-agent="video"]');
+await page.click('#model-menu [data-model="Kling 3.0"]');
+await page.waitForTimeout(200);
+check('video agent model switches too', await page.evaluate(() =>
+  JSON.parse(localStorage.pk_accounts)['mike@pinkdiamond.test'].modelChoice.video === 'Kling 3.0'));
+await page.screenshot({ path: OUT + '/12-models-unlocked.png' });
+await page.click('.agent-title');
+await page.fill('#agent-input', 'write me a tagline');
+await page.click('.agent-send');
+await page.waitForTimeout(1800);
+check('offline OpenRouter route is disclosed', (await page.locator('#agent-messages .msg.notice', { hasText: "isn't connected yet" }).count()) === 1);
 await page.click('.agent-close');
 await page.waitForTimeout(500);
 
@@ -114,6 +192,12 @@ await page.screenshot({ path: OUT + '/07-popup-ad.png' });
 await page.click('.ad-popup-close');
 await page.waitForTimeout(700);
 check('pop-up dismissed by ×', (await page.locator('.ad-popup').count()) === 0);
+
+/* ---------- dropping to Free re-locks models ---------- */
+await page.locator('#plan-grid [data-plan="Free"]').scrollIntoViewIfNeeded();
+await page.click('#plan-grid [data-plan="Free"]');
+await page.waitForTimeout(500);
+check('Free plan falls back to the house model', (await page.locator('#agent-model').innerText()) === 'Pink Diamond Lite');
 
 /* ---------- light theme ---------- */
 await page.click('#theme-toggle');

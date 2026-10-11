@@ -7,9 +7,11 @@ two things Pale doesn't have:
 1. **Unfiltered Mode**, a paid 18+ add-on that drops the agent's filtering.
 2. **A real ad layout**, priced and wired for Google Ads.
 
-Built with **C++, Python, and SQL**: the static front end ships as-is, a
-Python (FastAPI) backend owns accounts/billing/entitlement, SQLite holds the
-schema, and a C++ core implements the ad-delivery engine.
+Built with **Python, C++, Rust, Go, and SQL**: the static front end ships
+as-is, a Python (FastAPI) backend owns accounts/billing/entitlement and the
+OpenRouter proxy, SQLite holds the schema, a C++ core implements the
+ad-delivery engine, Rust holds the ledger and model-access rules as executable
+specs, and a Go tool verifies the OpenRouter connection.
 
 ## Run it
 
@@ -85,12 +87,12 @@ prompt repeats it on every request — paid or not.
 
 Priced per the monetization spec:
 
-| Placement                 | Box   | Size    | Price     | Behaviour                                |
-| ------------------------- | ----- | ------- | --------- | ---------------------------------------- |
-| Vertical — left rail      | black | 160×600 | $400 / mo | appears, stays, rotates in sequence      |
-| Vertical — right rail     | black | 160×600 | $400 / mo | same, offset two creatives in the loop   |
-| Horizontal — bottom       | black | 728×90  | $350 / mo | sticky, rotates on a 10s cadence         |
-| Pop-up                    | grey  | 320×260 | on request| dismissible with `×`                     |
+| Placement                 | Box   | Size    | Est. revenue | Behaviour                              |
+| ------------------------- | ----- | ------- | ------------ | -------------------------------------- |
+| Vertical — left sidebar   | black | 160×600 | $445 / mo    | appears, stays, rotates every 30s      |
+| Vertical — right sidebar  | black | 160×600 | $445 / mo    | same, offset two creatives in the loop |
+| Horizontal — bottom banner| black | 728×90  | $470 / mo    | sticky, rotates every 30s              |
+| Pop-up                    | grey  | 320×260 | on request   | dismissible with `×`                   |
 
 **Black boxes** are persistent — no close control, by design. **Grey boxes** are
 the pop-ups; the `×` dismisses them and suppresses further pop-ups for 12 hours.
@@ -202,3 +204,62 @@ logo, and the handwritten prompt + product spec) is now implemented:
 
 Smoke test: `node verify.mjs` — 29/29 green after the update, including the
 repriced add-on checkout and a zero-console-error pass.
+
+## Feature update (Oct 2026 — Pink_Diamond_Update_Specification.docx)
+
+- **Chatbox glow** — the agent's input bar gets a pink outline on hover and a
+  pink border with a soft glow while focused; both clear on blur
+  (`pink.css`, `:focus-within`, so there is no JS to leak state).
+- **Thinking diamond** — while the agent works, a small Pink Diamond gem
+  (the logo's `pd-gem` art) pulses to the right of "Pink Diamond is
+  thinking…". Reduced-motion users get a gentle fade instead.
+- **Model switching for subscribers** — the `model:` button opens a picker
+  with Chat / Image / Video / Audio tabs. Any active paid plan can switch
+  every agent's model; Free accounts and guests see the OpenRouter and studio
+  models locked and stay on the house models, and the backend enforces the
+  same rule: `/api/chat` returns 402 for anyone without an active plan, so a
+  non-subscriber never reaches OpenRouter (`_resolve_model`, `GET /api/models`,
+  and `native/rust/pink-access` as the executable spec). Dropping to Free
+  resets every choice. When a subscriber's chosen model can't be reached live,
+  the chat says so and Pink Diamond Lite answers.
+- **OpenRouter verification** — `GET /api/openrouter/status` reports whether a
+  key is configured and whether it can actually serve chat, without exposing
+  it; `native/go/orcheck` checks a key or a deployment from the command line:
+
+  ```bash
+  cd native/go/orcheck
+  OPENROUTER_API_KEY=sk-or-... go run .                       # a key
+  go run . -site https://pink-diamond-eight.vercel.app        # a deployment
+  ```
+
+  Finding at time of the update: the console key in the spec is valid, but it
+  is a **management (provisioning) key**. OpenRouter refuses those on
+  `/chat/completions`, and none was set in Vercel, so it was **not**
+  connected. Set `OPENROUTER_API_KEY` in Vercel to an *inference* key
+  (OpenRouter → Keys → Create, ideally with a credit limit) to go live.
+- **Google AdSense** — `ads-config.js → adsense` takes the publisher id and
+  one ad-unit id per placement. Once `client` is real, `index.html` loads
+  `adsbygoogle.js` plus the `google-adsense-account` meta tag, and the three
+  black boxes render AdSense units (AdSense first, then Ad Manager/GPT, then
+  house creatives). Also fill in `/ads.txt`. Rotation is every 30 seconds for
+  house creatives and GPT slots (`core/ad_engine.cpp::creative_at`,
+  `kRotationSeconds`). **Live AdSense units are deliberately not refreshed**:
+  AdSense policy forbids reloading ads without user interaction, and doing so
+  risks the account.
+- **Languages** — Python (backend gating, status endpoint, tests), C++ (30s
+  clock-driven rotation, new revenue table, C ABI), Rust
+  (`native/rust/pink-access`, `cargo test`), Go (`native/go/orcheck`,
+  `go test`).
+- **Billing guard** — `/api/subscribe`, `/api/topup` and
+  `/api/subscribe/pink-mode` return 501 unless `PD_DEMO_BILLING=1`. No payment
+  provider is wired yet, and without the guard anyone could grant themselves
+  a plan and spend the OpenRouter key.
+- **Fixes found along the way** — `database/schema.sql` had a trailing comma
+  that stopped the database from initializing (the deployed API couldn't
+  create accounts); session tokens were signed and verified against
+  different time buckets, so no token ever validated; plan purchases didn't
+  grant their monthly credits; `/api/me` crashed on a naive timestamp; the
+  three uncensored OpenRouter model ids no longer existed.
+
+Tests: `node verify.mjs` (47 checks), `python -m pytest backend/test_model_access.py`,
+`cargo test` in `native/rust/pink-access`, `go test ./...` in `native/go/orcheck`.

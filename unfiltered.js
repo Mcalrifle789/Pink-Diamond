@@ -16,7 +16,8 @@ const HEAT = {
   price: 18,           // USD / month, on top of the plan
   yearlyFactor: 0.8,   // matches the 20% yearly saving on plans
   creditCost: 2,       // credits per unfiltered message (vs 1 filtered)
-  models: ['Dolphin 3.0 R1', 'Venice Uncensored', 'Euryale 70B', 'Midnight Rose 103B', 'Grok (unfiltered)'],
+  // First two mirror backend UNFILTERED_MODELS (the real OpenRouter routes).
+  models: ['Venice Uncensored', 'Euryale 70B', 'Dolphin 3.0 R1', 'Midnight Rose 103B', 'Grok (unfiltered)'],
 };
 
 const heatPrice = () => (billing === 'yearly' ? HEAT.price * HEAT.yearlyFactor : HEAT.price);
@@ -77,8 +78,7 @@ function renderHeat() {
   $('#agent')?.classList.toggle('heat', on);
   setText('#agent-mode-tag', on ? 'UNFILTERED' : 'FILTERED');
   setText('#agent-heat-sub', (on ? 'on · ' : 'off · ') + label);
-  const modelBtn = $('#agent-model');
-  if (modelBtn && !modelBtn.dataset.userSet) modelBtn.textContent = on ? HEAT.models[0] : 'Nano Banana Pro';
+  renderModelPicker();   // shows the uncensored route while on, the chosen model otherwise
 
   // settings row
   const pt = $('.heat-pill-toggle');
@@ -162,8 +162,6 @@ $('#revoke-adult')?.addEventListener('click', () => {
   renderHeat();
   showToast('18+ confirmation revoked.');
 });
-// remember a manual model choice so renderHeat stops overwriting it
-$('#agent-model')?.addEventListener('click', () => { $('#agent-model').dataset.userSet = '1'; });
 
 /* ---------- the unfiltered voice ---------- */
 function unfilteredReply(input) {

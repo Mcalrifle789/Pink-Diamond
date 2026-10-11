@@ -65,8 +65,8 @@ const AUDIO_MODELS = [
 
 const UNCENSORED_MODELS = [
   { tier: 'Text · uncensored', note: 'Reached only while Unfiltered Mode is on', models: [
-    ['Dolphin 3.0 R1', 'Instruction-tuned with the refusal layer removed — the default unfiltered brain'],
-    ['Venice Uncensored', 'Blunt, opinionated, minimal guardrail padding'],
+    ['Venice Uncensored', 'Dolphin 24B, Venice edition — the default unfiltered brain'],
+    ['Dolphin 3.0 R1', 'Instruction-tuned with the refusal layer removed'],
     ['Euryale 70B', 'Long-form mature fiction and sustained roleplay'],
     ['Midnight Rose 103B', 'Dense prose, dark themes, strong character voice'],
     ['Grok (unfiltered)', 'xAI house model with the loosest public settings'],

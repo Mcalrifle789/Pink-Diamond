@@ -1,13 +1,13 @@
 /* ============================================================
    Pink Diamond — ad delivery runtime
    ------------------------------------------------------------
-   Layout, per the monetization spec:
-     · two vertical side placements ($400 each)
-     · one horizontal bottom placement ($350)
-     · black boxes  -> ads appear, stay, and rotate in sequence
+   Layout, per the AdSense update spec:
+     · left + right sidebar units (est. $445 / month each)
+     · one bottom banner unit     (est. $470 / month)
+     · black boxes  -> ads appear, stay, and rotate every 30s
      · grey boxes   -> pop-up ads, dismissible via ×
-   All paid inventory is served by Google Ads (GPT). House
-   creatives fill the same boxes until real slot IDs are set.
+   Paid inventory is served by Google AdSense (or Ad Manager via
+   GPT). House creatives fill the same boxes until real IDs are set.
    ============================================================ */
 'use strict';
 
@@ -17,7 +17,10 @@
   const H = C.houseCreatives || {};
   const cap = C.popupCap || { perSession: 2, minGapMs: 60000, dismissedForHours: 12 };
 
-  const liveGpt = !!(C.useGpt && C.networkCode && !/^\/0000/.test(C.networkCode));
+  const AS = C.adsense || {};
+  const isSet = v => !!v && !/X{4}/.test(v);
+  const liveAdsense = isSet(AS.client);
+  const liveGpt = !liveAdsense && !!(C.useGpt && C.networkCode && !/^\/0000/.test(C.networkCode));
   const liveAds = !!(C.googleAdsId && !/^AW-XXXX/.test(C.googleAdsId));
 
   const ss = {
@@ -45,7 +48,7 @@
            '<strong class="ad-title">' + c.title + '</strong>' +
            '<p class="ad-body">' + c.body + '</p>' +
            '<span class="ad-cta">' + c.cta + ' <i>↗</i></span>' +
-           '<span class="ad-served">google ads · ' + shape + '</span>';
+           '<span class="ad-served">google adsense · ' + shape + '</span>';
   }
 
   /* Black box: the ad appears, stays, then rotates to the next in sequence. */
@@ -62,7 +65,7 @@
     };
     paint();
     if (list.length > 1) {
-      const timer = setInterval(() => { if (!document.hidden) paint(); }, rotateMs || 12000);
+      const timer = setInterval(() => { if (!document.hidden) paint(); }, rotateMs || 30000);
       box.dataset.rotating = 'on';
       box.addEventListener('mouseenter', () => box.classList.add('ad-hold'));
       box.addEventListener('mouseleave', () => box.classList.remove('ad-hold'));
@@ -74,11 +77,28 @@
     });
   }
 
-  /* Real GPT slot when the network code is set; house creative otherwise. */
+  /* AdSense unit when the publisher id is set, real GPT slot when the Ad
+     Manager network code is set, house creative otherwise. */
   function fillBox(box) {
     const key = box.dataset.placement;
     const conf = P[key] || {};
     const shape = /rail/.test(key) ? '160×600' : (/leader/.test(key) ? '728×90' : '320×260');
+    const adsenseSlot = (AS.slots || {})[key];
+    if (liveAdsense && isSet(adsenseSlot)) {
+      // Rendered once: AdSense policy forbids programmatic refresh.
+      const ins = document.createElement('ins');
+      ins.className = 'adsbygoogle';
+      ins.style.cssText = 'display:block;width:100%;height:100%';
+      ins.dataset.adClient = AS.client;
+      ins.dataset.adSlot = adsenseSlot;
+      ins.dataset.adFormat = /rail/.test(key) ? 'vertical' : 'horizontal';
+      ins.dataset.fullWidthResponsive = 'false';
+      box.innerHTML = '';
+      box.appendChild(ins);
+      box.dataset.network = 'adsense';
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+      return;
+    }
     if (liveGpt) {
       const id = 'gpt-' + key;
       box.innerHTML = '<div id="' + id + '"></div>';
@@ -171,8 +191,8 @@
       '<div class="rate-row">' +
         '<span class="rate-box ' + (r.kind === 'popup' ? 'is-grey' : 'is-black') + '"></span>' +
         '<div class="rate-meta"><strong>' + r.label + '</strong>' +
-        '<span>' + r.size + ' · ' + (r.kind === 'popup' ? 'dismissible pop-up' : 'rotates in sequence') + '</span></div>' +
-        '<b class="rate-price">' + (r.price === null ? 'on request' : '$' + r.price + '<i>/mo</i>') + '</b>' +
+        '<span>' + r.size + ' · ' + (r.kind === 'popup' ? 'dismissible pop-up' : 'rotates every 30s') + '</span></div>' +
+        '<b class="rate-price">' + (r.price === null ? 'on request' : '$' + r.price + '<i>/mo est.</i>') + '</b>' +
       '</div>').join('');
   }
 
@@ -181,5 +201,5 @@
     track('adImpression', { placement: box.dataset.placement, format: 'rotating' });
   });
 
-  window.PinkAds = { track, showPopup, liveGpt, liveAds };
+  window.PinkAds = { track, showPopup, liveGpt, liveAds, liveAdsense };
 })();

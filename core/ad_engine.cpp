@@ -2,6 +2,7 @@
 //
 // Implements the placement rules from the monetization spec:
 //   - black boxes: creatives appear, stay, and rotate to the next in sequence
+//     every 30 seconds (AdSense update: $445 + $445 rails, $470 bottom)
 //   - grey boxes (pop-ups): dismissible, max 2 per session, 90s minimum gap,
 //     12h suppression after a dismissal
 //
@@ -18,10 +19,10 @@ namespace pd {
 namespace {
 std::vector<AdSlot> default_inventory() {
     return {
-        {"rail_left",  "black", 400},
-        {"rail_right", "black", 400},
-        {"bottom",     "black", 350},
-        {"popup",      "grey",  0},
+        {"rail_left",  "black", 445, 0},
+        {"rail_right", "black", 445, 2},
+        {"bottom",     "black", 470, 0},
+        {"popup",      "grey",  0,   0},
     };
 }
 }  // namespace
@@ -54,6 +55,22 @@ long AdEngine::next_creative(const std::string& placement) {
     const long current = cursor;
     cursor += 1;  // wrap handled by the caller's creative list length
     return current;
+}
+
+long AdEngine::creative_at(const std::string& placement, long elapsed_seconds, long count) const {
+    const AdSlot& s = slot(placement);
+    if (s.box != "black") throw std::invalid_argument("rotation applies to black boxes only");
+    if (count <= 0) throw std::invalid_argument("creative count must be positive");
+    const long ticks = std::max(0L, elapsed_seconds) / kRotationSeconds;
+    return (s.start_offset + ticks) % count;
+}
+
+int AdEngine::estimated_monthly_revenue() const {
+    int total = 0;
+    for (const auto& s : inventory_) {
+        if (s.box == "black") total += s.price_usd;
+    }
+    return total;
 }
 
 bool AdEngine::popup_allowed(long now_epoch_seconds) {
@@ -107,6 +124,16 @@ PD_API int pd_slot_price(void* engine, const char* placement) {
     return static_cast<pd::AdEngine*>(engine)->slot(placement).price_usd;
 }
 
+PD_API long pd_creative_at(void* engine, const char* placement, long elapsed, long count) {
+    return static_cast<pd::AdEngine*>(engine)->creative_at(placement, elapsed, count);
+}
+
+PD_API long pd_rotation_seconds() { return pd::kRotationSeconds; }
+
+PD_API int pd_estimated_revenue(void* engine) {
+    return static_cast<pd::AdEngine*>(engine)->estimated_monthly_revenue();
+}
+
 }  // extern "C"
 
 #ifdef PD_AD_ENGINE_CLI
@@ -114,6 +141,10 @@ int main() {
     pd::AdEngine engine;
     std::cout << "rail_left price: $" << engine.slot("rail_left").price_usd << "\n";
     for (int i = 0; i < 3; ++i) std::cout << "rail_left creative #" << engine.next_creative("rail_left") << "\n";
+    for (long t : {0L, 29L, 30L, 61L}) {
+        std::cout << "t=" << t << "s rail_right shows #" << engine.creative_at("rail_right", t, 4) << "\n";
+    }
+    std::cout << "estimated revenue: $" << engine.estimated_monthly_revenue() << "/mo\n";
     long now = 1'700'000'000;
     for (int i = 0; i < 3; ++i) {
         if (engine.popup_allowed(now)) { engine.record_popup_shown(now); std::cout << "popup shown\n"; }

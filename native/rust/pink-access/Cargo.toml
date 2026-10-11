@@ -1,0 +1,10 @@
+[package]
+name = "pink-access"
+version = "0.1.0"
+edition = "2021"
+description = "Pink Diamond model-switching entitlement (Rust core, per the update spec)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]

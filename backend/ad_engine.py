@@ -13,12 +13,14 @@ import pathlib
 MAX_POPUPS_PER_SESSION = 2
 MIN_POPUP_GAP_SECONDS = 90
 DISMISS_SUPPRESSION_SECONDS = 12 * 3600
+ROTATION_SECONDS = 30  # AdSense update: black boxes change every 30s
 
+# placement: (box, estimated monthly revenue in USD, rotation start offset)
 _INVENTORY = {
-    "rail_left": ("black", 400),
-    "rail_right": ("black", 400),
-    "bottom": ("black", 350),
-    "popup": ("grey", 0),
+    "rail_left": ("black", 445, 0),
+    "rail_right": ("black", 445, 2),
+    "bottom": ("black", 470, 0),
+    "popup": ("grey", 0, 0),
 }
 
 
@@ -38,6 +40,10 @@ def _load_lib():
             lib.pd_popup_dismiss.argtypes = [ctypes.c_void_p, ctypes.c_long]
             lib.pd_slot_price.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
             lib.pd_slot_price.restype = ctypes.c_int
+            lib.pd_creative_at.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_long, ctypes.c_long]
+            lib.pd_creative_at.restype = ctypes.c_long
+            lib.pd_estimated_revenue.argtypes = [ctypes.c_void_p]
+            lib.pd_estimated_revenue.restype = ctypes.c_int
             return lib, lib.pd_engine_new()
     return None, None
 
@@ -69,6 +75,24 @@ class AdEngine:
         current = self._cursors[placement]
         self._cursors[placement] += 1
         return current
+
+    def creative_at(self, placement: str, elapsed_seconds: int, count: int) -> int:
+        """Which of `count` creatives a black box shows after `elapsed_seconds`."""
+        if placement not in _INVENTORY:
+            raise KeyError(placement)
+        box, _, offset = _INVENTORY[placement]
+        if box != "black":
+            raise ValueError("rotation applies to black boxes only")
+        if count <= 0:
+            raise ValueError("creative count must be positive")
+        if self._lib:
+            return self._lib.pd_creative_at(self._handle, placement.encode(), elapsed_seconds, count)
+        return (offset + max(0, elapsed_seconds) // ROTATION_SECONDS) % count
+
+    def estimated_monthly_revenue(self) -> int:
+        if self._lib:
+            return self._lib.pd_estimated_revenue(self._handle)
+        return sum(price for box, price, _ in _INVENTORY.values() if box == "black")
 
     def popup_allowed(self, now: int) -> bool:
         if self._lib:

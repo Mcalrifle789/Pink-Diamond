@@ -35,3 +35,8 @@ def run(query: str, params: tuple = ()) -> int:
         cur = conn.execute(query, params)
         conn.commit()
         return cur.lastrowid
+
+
+def all(query: str, params: tuple = ()) -> list[sqlite3.Row]:  # noqa: A001 - mirrors one()/run()
+    with connect() as conn:
+        return conn.execute(query, params).fetchall()

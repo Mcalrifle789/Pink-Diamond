@@ -1,0 +1,4 @@
+# Pink Diamond — authorized digital sellers (https://iabtechlab.com/ads-txt/)
+# Uncomment and replace with the publisher id from AdSense → Account → Settings
+# (the same id as ads-config.js → adsense.client, without the "ca-" prefix):
+# google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0

@@ -19,7 +19,8 @@ namespace pd {
 struct AdSlot {
     std::string placement;   // rail_left | rail_right | bottom | popup
     std::string box;         // black | grey
-    int price_usd;           // 400 | 400 | 350 | 0
+    int price_usd;           // estimated monthly revenue: 445 | 445 | 470 | 0
+    long start_offset = 0;   // the right rail starts two creatives into the loop
 };
 
 struct PopupState {
@@ -31,6 +32,8 @@ struct PopupState {
 inline constexpr int kMaxPopupsPerSession = 2;
 inline constexpr long kMinPopupGapSeconds = 90;
 inline constexpr long kDismissSuppressionSeconds = 12 * 3600;
+// AdSense update: every black box changes creative every 30 seconds.
+inline constexpr long kRotationSeconds = 30;
 
 class AdEngine {
   public:
@@ -41,6 +44,13 @@ class AdEngine {
 
     // Black boxes: appear, stay, rotate to the next creative in sequence.
     long next_creative(const std::string& placement);
+
+    // Clock-driven rotation: which creative (of `count`) a black box shows
+    // `elapsed_seconds` after page load, advancing every kRotationSeconds.
+    long creative_at(const std::string& placement, long elapsed_seconds, long count) const;
+
+    // Sum of the estimated monthly revenue across the paid black boxes.
+    int estimated_monthly_revenue() const;
 
     // Grey boxes (pop-ups): cap + gap + suppression policy.
     bool popup_allowed(long now_epoch_seconds);

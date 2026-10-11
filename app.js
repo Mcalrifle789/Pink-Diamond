@@ -403,7 +403,7 @@ $$('[data-paygo]').forEach(b => b.addEventListener('click', () => openModal('#pa
 /* ============ AGENT (chatbox + client-side AI) ============ */
 const agent = $('#agent');
 function openAgent() { agent.classList.add('open'); document.documentElement.classList.add('agent-open'); agent.setAttribute('aria-hidden', 'false'); setTimeout(() => $('#agent-input')?.focus(), 120); }
-function closeAgent() { agent.classList.remove('open'); document.documentElement.classList.remove('agent-open'); agent.setAttribute('aria-hidden', 'true'); }
+function closeAgent() { agent.classList.remove('open'); document.documentElement.classList.remove('agent-open'); agent.setAttribute('aria-hidden', 'true'); $('.agent-sidebar')?.classList.remove('open'); }
 $$('[data-launch-agent]').forEach(b => {
   b.addEventListener('click', openAgent);
   b.addEventListener('keydown', e => { if (e.key === 'Enter') openAgent(); });
@@ -628,6 +628,13 @@ $('.ad-window-top button')?.addEventListener('click', e => {
   w.style.opacity = '0'; w.style.transform = 'rotate(3deg) scale(.96)';
   showToast('Ad dismissed. Your attention stays yours.');
 });
+/* Small screens: the agent sidebar becomes a drawer, toggled from the chat top bar */
+$('#agent-menu-toggle')?.addEventListener('click', () => {
+  $('.agent-sidebar')?.classList.toggle('open');
+});
+$$('.agent-nav-item').forEach(a => a.addEventListener('click', () => {
+  $('.agent-sidebar')?.classList.remove('open');
+}));
 $('.menu-button')?.addEventListener('click', () => {
   const nav = $('.main-nav');
   const open = nav.style.display === 'flex';

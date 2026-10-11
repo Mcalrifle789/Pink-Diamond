@@ -44,7 +44,7 @@ html[data-theme="light"] .pd-wordmark,html[data-theme="porcelain"] .pd-wordmark,
 html[data-theme="candlelight"] .pd-wordmark,html[data-theme="coral-dusk"] .pd-wordmark{background-image:url('brand/pd-wordmark-ink.png')}
 
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;overflow-x:hidden}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 body{margin:0;background:var(--night);color:var(--ink);font-family:'Manrope',Arial,'Arial CE',sans-serif;line-height:1.5;overflow-x:hidden;transition:background .5s,color .5s}
 a{color:inherit;text-decoration:none}
@@ -233,12 +233,12 @@ h1 em,h2 span,blockquote em{color:var(--accent)}
 .send-mock{color:var(--accent)}
 
 /* ---------- plans ---------- */
-.plans-heading{display:flex;justify-content:space-between;align-items:end;margin-bottom:56px}
+.plans-heading{display:flex;justify-content:space-between;align-items:end;flex-wrap:wrap;gap:20px;margin-bottom:56px}
 .billing-toggle{display:flex;gap:6px;padding:5px;background:var(--card);border:1px solid var(--line);border-radius:4px}
 .billing-toggle button{color:var(--muted);font-size:10px;padding:10px 13px;border-radius:3px}
 .billing-toggle button.active{background:var(--btn-bg);color:var(--btn-ink)}
 .billing-toggle small{color:#7fd7b0;margin-left:4px}
-.plan-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
 .plan-grid .plan-card:first-child{opacity:.92}
 .plan-card{border-radius:12px;padding:26px 22px 28px;min-height:470px;position:relative;display:flex;flex-direction:column}
 .plan-card:hover{transform:translateY(-6px)}
@@ -308,7 +308,8 @@ h1 em,h2 span,blockquote em{color:var(--accent)}
 /* ============ AGENT OVERLAY ============ */
 .agent-overlay{position:fixed;inset:0;z-index:60;display:none;place-items:center;padding:24px;background:rgba(13,3,10,.72);backdrop-filter:blur(10px)}
 .agent-overlay.open{display:grid}
-.agent-shell{width:min(1180px,100%);height:min(760px,92vh);border-radius:20px;display:grid;grid-template-columns:250px 1fr;overflow:hidden}
+.agent-shell{width:min(1180px,100%);height:min(760px,92vh);border-radius:20px;display:grid;grid-template-columns:250px 1fr;overflow:hidden;position:relative}
+.agent-menu-toggle{display:none;font-size:20px;color:var(--soft);padding:2px 10px}
 .agent-sidebar{border-right:1px solid var(--line);padding:20px 16px;display:flex;flex-direction:column;gap:6px}
 .agent-model-row{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.1em;padding:6px 10px 14px;display:flex;gap:8px;align-items:center}
 .agent-model{color:var(--ice);font-size:11px;border-bottom:1px dashed var(--glass-brd)}
@@ -386,6 +387,7 @@ html[data-theme="light"] .modal-card input{background:rgba(255,255,255,.7)}
 
 .paygo-modal .usage-options{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .usage-options button{border:1px solid var(--glass-brd);padding:17px 10px;text-align:left;border-radius:6px}
+@media (max-width:400px){.usage-options{grid-template-columns:repeat(2,1fr)!important}}
 .usage-options button:hover{border-color:var(--accent)}
 .usage-options strong{display:block;font-size:18px}
 .usage-options span{color:var(--muted);font-size:10px}
@@ -395,7 +397,7 @@ html[data-theme="light"] .modal-card input{background:rgba(255,255,255,.7)}
 
 /* ============ RESPONSIVE ============ */
 @media (max-width:1000px){
-  .hero-section,.feature-section,.ad-section,.intro-grid,.agent-preview-grid,.capabilities-heading,.plans-heading{grid-template-columns:1fr}
+  .hero-section,.feature-section,.ad-section,.intro-grid,.agent-preview-grid,.capabilities-heading,.plans-heading,.heat-grid{grid-template-columns:1fr}
   .hero-section{padding-top:70px;gap:40px}
   .hero-art-wrap{height:480px}
   .feature-visual{order:2}.feature-copy{order:1}
@@ -404,6 +406,8 @@ html[data-theme="light"] .modal-card input{background:rgba(255,255,255,.7)}
   .plans-heading,.capabilities-heading{gap:24px}
   .agent-shell{grid-template-columns:1fr}
   .agent-sidebar{display:none}
+  .agent-sidebar.open{display:flex;position:absolute;inset:0;z-index:6;background:var(--panel);overflow-y:auto}
+  .agent-menu-toggle{display:block}
 }
 @media (max-width:900px){
   .site-header{padding:0 22px}
@@ -412,6 +416,15 @@ html[data-theme="light"] .modal-card input{background:rgba(255,255,255,.7)}
   .menu-button{display:block}
   .section{padding:100px 7vw}
   .brand-logo{height:36px}
+}
+@media (max-width:700px){
+  /* agent fills the screen; the sidebar becomes a swipe-free drawer */
+  .agent-overlay{padding:0}
+  .agent-shell{width:100%;height:100vh;height:100dvh;border-radius:0}
+  .agent-messages{padding:16px 14px}
+  .msg{max-width:88%}
+  .agent-input-bar{margin:10px}
+  .audio-bar{margin-top:0}
 }
 @media (max-width:560px){
   .site-header{height:72px}
@@ -428,6 +441,11 @@ html[data-theme="light"] .modal-card input{background:rgba(255,255,255,.7)}
   .stat-grid{grid-template-columns:1fr}
   .agent-shell{height:88vh}
   .final-cta{padding:120px 20px}
+  /* these rows are set in nowrap mono type on desktop; let them wrap on phones */
+  .trust-row{white-space:normal;flex-wrap:wrap;justify-content:center;gap:8px}
+  .trust-row i{display:none}
+  .logo-strip{flex-wrap:wrap;padding:18px 6vw;text-align:center}
+  .provider-logos{flex-wrap:wrap;justify-content:center;gap:12px 18px}
 }
 @media (prefers-reduced-motion:reduce){
   .refraction,.intro-gem,.vortex-ring,.intro-logo{animation:none!important}

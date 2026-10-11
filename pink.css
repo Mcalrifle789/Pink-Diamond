@@ -65,7 +65,12 @@ body{padding-bottom:116px}
   display:grid;place-items:center;font-size:18px;line-height:1;color:#cfc4cd;z-index:2;
   background:rgba(255,255,255,.06);transition:.2s}
 .ad-popup-close:hover{background:var(--heat);color:#fff;transform:rotate(90deg)}
-@media (max-width:620px){ .ad-popup{left:14px;right:14px;width:auto;bottom:118px} }
+@media (max-width:620px){ .ad-popup{left:14px;right:14px;width:auto;bottom:118px}
+  /* the leaderboard's text stack is tight on phones: drop the CTA link */
+  .ad-leaderboard .ad-cta{display:none}
+  .ad-leaderboard .ad-box{padding:10px 14px;gap:12px}
+  .ad-leaderboard .ad-body{font-size:10px}
+}
 
 /* ---- rate card ---- */
 .rate-card{display:flex;flex-direction:column;gap:2px;margin:0 0 26px;border-top:1px solid var(--line)}
@@ -225,6 +230,10 @@ html.heat-on .heat-row b{color:var(--heat)}
 .heat-group{border-color:rgba(255,79,156,.24)}
 
 /* ---- responsive ---- */
+@media (max-width:1000px){
+  /* the model menu is anchored to the (now drawer) sidebar; keep it on screen */
+  .agent-sidebar.open .model-menu{left:12px;right:12px}
+}
 @media (max-width:900px){
   .heat-grid{grid-template-columns:1fr;gap:48px}
   .addon-strip{flex-direction:column;align-items:flex-start}

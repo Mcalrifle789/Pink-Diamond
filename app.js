@@ -632,7 +632,7 @@ $('.menu-button')?.addEventListener('click', () => {
   const nav = $('.main-nav');
   const open = nav.style.display === 'flex';
   if (open) { nav.removeAttribute('style'); }
-  else { Object.assign(nav.style, { display: 'flex', position: 'absolute', top: '72px', left: '0', right: '0', padding: '22px 24px', background: 'var(--panel)', flexDirection: 'column', gap: '18px', zIndex: '20' }); }
+  else { Object.assign(nav.style, { display: 'flex', position: 'absolute', top: '100%', left: '0', right: '0', padding: '22px 24px', background: 'var(--panel)', flexDirection: 'column', gap: '18px', zIndex: '20' }); }
 });
-$$('.main-nav a').forEach(a => a.addEventListener('click', () => { const n = $('.main-nav'); if (window.innerWidth <= 900) n.removeAttribute('style'); }));
+$$('.main-nav a').forEach(a => a.addEventListener('click', () => { const n = $('.main-nav'); if (getComputedStyle($('.menu-button')).display !== 'none') n.removeAttribute('style'); }));
 

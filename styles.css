@@ -253,7 +253,7 @@ h1 em,h2 span,blockquote em{color:var(--accent)}
 .price span{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
 .plan-quota{list-style:none;padding:14px 0 0;margin:14px 0 0;border-top:1px solid var(--line);color:var(--soft);font-size:11px;line-height:1.9;flex:1}
 .plan-quota li{display:flex;gap:9px;align-items:flex-start}
-.plan-quota li:before{content:'â–';color:var(--accent);font-size:9px;line-height:1.7}
+.plan-quota li:before{content:'\2756';color:var(--accent);font-size:9px;line-height:1.7}
 .plan-quota b{color:var(--ink);font-weight:600}
 .plan-button{width:100%;padding:12px;background:transparent;border:1px solid var(--glass-brd);color:var(--ink);font-size:10px;display:flex;justify-content:space-between;align-items:center;margin-top:18px;border-radius:3px;transition:.25s}
 .plan-button:hover{border-color:var(--accent)}

@@ -407,3 +407,28 @@ html[data-theme="porcelain"] .vortex-bg,html[data-theme="candlelight"] .vortex-b
 .modal-card .heat-check{display:flex;align-items:flex-start;gap:12px;font-family:inherit;font-size:12px;letter-spacing:0;line-height:1.5;color:var(--ink);margin-bottom:16px}
 .modal-card .heat-check input{display:inline-block;width:17px;height:17px;margin:1px 0 0;padding:0;flex:none}
 .primary-button:disabled{opacity:.42;cursor:not-allowed;transform:none}
+
+/* Header: the logo keeps its size and nothing wraps into it, even when the
+   ad rails narrow the header */
+.site-header .brand{flex:none;margin-right:28px}
+.main-nav{gap:clamp(14px,1.5vw,36px);margin-right:clamp(16px,2vw,44px)}
+.main-nav a,.header-actions>*{white-space:nowrap}
+/* Full nav only where it fits: no rails (1181-1279px) or wide screens (>1600px) */
+@media (max-width:1180px),(min-width:1280px) and (max-width:1600px){
+  .main-nav{display:none}
+  .header-actions{margin-left:auto}
+  .menu-button{display:block}
+}
+@media (max-width:560px){
+  /* Unfiltered stays one tap away in the menu; the header keeps sign-in and launch */
+  .header-actions .heat-pill{display:none}
+  .header-actions{gap:10px}
+  .menu-button{margin-left:6px}
+  .site-header{padding:0 16px}
+  .site-header .brand{margin-right:0}
+}
+@media (max-width:440px){
+  .header-actions .theme-toggle{display:none}   /* themes stay in Settings */
+}
+/* The avatar only exists for signed-in users */
+.avatar-button[hidden]{display:none}

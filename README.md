@@ -294,7 +294,14 @@ and `python -m pytest backend/test_payments.py` (run separately),
 
 Payments stay off (`/api/payments/config` → `live: false`, demo checkout in
 the UI) until **all** of these are set in Vercel: `STRIPE_SECRET_KEY`,
-`STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` (endpoint
-`https://<site>/api/payments/webhook`), `OPENROUTER_MANAGEMENT_KEY`,
-`PD_KEY_ENCRYPTION_SECRET`, `PD_SESSION_SECRET`, and `DATABASE_URL`
-pointing at Postgres (`database/schema.postgres.sql`).
+`STRIPE_PUBLISHABLE_KEY`, an OpenRouter management key
+(`OPENROUTER_MANAGEMENT_KEY`, or in `OPENROUTER_API_KEY` — the server asks
+OpenRouter which kind it is), `PD_KEY_ENCRYPTION_SECRET`, `PD_SESSION_SECRET`,
+and `DATABASE_URL` pointing at Postgres (`database/schema.postgres.sql`).
+
+The Stripe webhook registers itself: with `PD_PUBLIC_URL` set, the first
+`/api/payments/config` request creates the endpoint
+`<PD_PUBLIC_URL>/api/payments/webhook` in Stripe and stores its signing secret
+encrypted in the database (per Stripe key, so switching test → live keys
+registers again). Setting `STRIPE_WEBHOOK_SECRET` instead skips this.
+`/api/payments/config` reports `stripe_mode` (test/live) and `database`.

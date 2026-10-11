@@ -16,6 +16,7 @@ Compliance shape (why it is built this way):
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 
@@ -33,6 +34,8 @@ from entitlement import current_subscription
 router = APIRouter()
 STRIPE_JS = "https://js.stripe.com/dahlia/stripe.js"
 WEBHOOK_TOLERANCE_SECONDS = 300
+WEBHOOK_EVENTS = ["checkout.session.completed", "invoice.paid", "invoice.payment_failed",
+                  "customer.subscription.updated", "customer.subscription.deleted", "charge.refunded"]
 
 
 def _stripe():
@@ -42,13 +45,62 @@ def _stripe():
     return stripe
 
 
+def stripe_mode() -> str | None:
+    key = env("STRIPE_SECRET_KEY")
+    if not key:
+        return None
+    return "live" if key.startswith(("sk_live_", "rk_live_")) else "test"
+
+
+def _setting_name(name: str) -> str:
+    """Stripe objects belong to one account and mode, so their ids are stored
+    per secret key: switching test -> live keys starts fresh."""
+    digest = hashlib.sha256(env("STRIPE_SECRET_KEY").encode()).hexdigest()[:12]
+    return f"{name}:{digest}"
+
+
+def webhook_secret() -> str:
+    """STRIPE_WEBHOOK_SECRET, or the one stored when ensure_webhook() created the endpoint."""
+    explicit = env("STRIPE_WEBHOOK_SECRET")
+    if explicit or not (env("STRIPE_SECRET_KEY") and env("PD_KEY_ENCRYPTION_SECRET")):
+        return explicit
+    row = db.one("SELECT value FROM settings WHERE key=?", (_setting_name("stripe_webhook_secret"),))
+    return ork.decrypt(row["value"]) if row else ""
+
+
+def ensure_webhook() -> None:
+    """Register this site's webhook endpoint with Stripe once, keeping the
+    signing secret encrypted in the database. Only the server ever sees the
+    Stripe secret key, so this is how the endpoint gets wired without anyone
+    copying secrets around. Needs PD_PUBLIC_URL so it never registers a
+    one-off deployment URL."""
+    origin = env("PD_PUBLIC_URL").rstrip("/")
+    if (env("STRIPE_WEBHOOK_SECRET") or not origin or not env("STRIPE_SECRET_KEY")
+            or not env("PD_KEY_ENCRYPTION_SECRET") or not db.persistent()):
+        return
+    name = _setting_name("stripe_webhook_secret")
+    with db.transaction() as conn:
+        db.lock(conn, "stripe_webhook")          # one creator across instances
+        if conn.execute("SELECT 1 FROM settings WHERE key=?", (name,)).fetchone():
+            return
+        endpoint = _stripe().WebhookEndpoint.create(
+            url=origin + "/api/payments/webhook",
+            enabled_events=WEBHOOK_EVENTS,
+            description="Pink Diamond payments (created by the site)",
+        )
+        conn.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (name, ork.encrypt(endpoint.secret)))
+
+
 def blockers() -> list[str]:
     """Everything that must be true before Pink Diamond may take real money."""
     missing = []
-    for name in ("STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET",
-                 "OPENROUTER_MANAGEMENT_KEY", "PD_KEY_ENCRYPTION_SECRET"):
+    for name in ("STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "PD_KEY_ENCRYPTION_SECRET"):
         if not env(name):
             missing.append(f"{name} is not set")
+    if env("STRIPE_SECRET_KEY") and not webhook_secret():
+        missing.append("Stripe webhook not registered (set PD_PUBLIC_URL, or STRIPE_WEBHOOK_SECRET)")
+    if not ork.management_key():
+        missing.append("no OpenRouter management key (OPENROUTER_MANAGEMENT_KEY, or one in OPENROUTER_API_KEY)")
     if env("PD_SESSION_SECRET") in ("", SESSION_SECRET_DEFAULT):
         missing.append("PD_SESSION_SECRET is not set")
     if not db.persistent():
@@ -93,6 +145,11 @@ def _customer_id(user: dict) -> str:
 
 @router.get("/api/payments/config")
 def payments_config(user: dict | None = Depends(optional_user)):
+    try:
+        if not webhook_secret():
+            ensure_webhook()
+    except Exception as exc:                     # reported through blockers()
+        print(f"stripe webhook setup failed: {exc.__class__.__name__}: {exc}")
     plans = {
         key: {"name": PLAN_NAMES[key], "month_cents": cents,
               "year_cents": core.plan_price_cents(cents, "year")}
@@ -102,6 +159,8 @@ def payments_config(user: dict | None = Depends(optional_user)):
         "live": live(),
         "blockers": blockers(),
         "engine": core.engine(),
+        "database": "postgres" if db.IS_POSTGRES else "sqlite",
+        "stripe_mode": stripe_mode(),
         "publishable_key": env("STRIPE_PUBLISHABLE_KEY") if live() else None,
         "stripe_js": STRIPE_JS,
         "terms_version": TERMS_VERSION,
@@ -219,7 +278,7 @@ def checkout_status(session_id: str, user: dict = Depends(current_user)):
 def _portal_configuration() -> str:
     """A customer-portal setup that lets people update cards, see invoices and
     cancel (at period end) — but not switch plans behind our metadata."""
-    row = db.one("SELECT value FROM settings WHERE key='stripe_portal_config'")
+    row = db.one("SELECT value FROM settings WHERE key=?", (_setting_name("stripe_portal_config"),))
     if row:
         return row["value"]
     conf = _stripe().billing_portal.Configuration.create(
@@ -233,7 +292,7 @@ def _portal_configuration() -> str:
                                         "too_expensive", "missing_features", "unused", "other"]}},
         },
     )
-    db.run("INSERT INTO settings (key, value) VALUES (?, ?)", ("stripe_portal_config", conf.id))
+    db.run("INSERT INTO settings (key, value) VALUES (?, ?)", (_setting_name("stripe_portal_config"), conf.id))
     return conf.id
 
 
@@ -289,11 +348,11 @@ def set_uncensored(body: UncensoredBody, user: dict = Depends(current_user)):
 
 
 def _uncensored_product(stripe) -> str:
-    row = db.one("SELECT value FROM settings WHERE key='stripe_uncensored_product'")
+    row = db.one("SELECT value FROM settings WHERE key=?", (_setting_name("stripe_uncensored_product"),))
     if row:
         return row["value"]
     product = stripe.Product.create(name="Pink Diamond Uncensored Mode (18+)")
-    db.run("INSERT INTO settings (key, value) VALUES (?, ?)", ("stripe_uncensored_product", product.id))
+    db.run("INSERT INTO settings (key, value) VALUES (?, ?)", (_setting_name("stripe_uncensored_product"), product.id))
     return product.id
 
 
@@ -507,7 +566,7 @@ def handle_event(event: dict) -> str:
 
 @router.post("/api/payments/webhook")
 async def stripe_webhook(request: Request):
-    secret = env("STRIPE_WEBHOOK_SECRET")
+    secret = webhook_secret()
     if not secret:
         raise HTTPException(503, "Webhook secret not configured")
     payload = await request.body()

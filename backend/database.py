@@ -83,6 +83,13 @@ class _SqliteConn(_Conn):
         return self.raw.execute(query.replace(" FOR UPDATE", ""), params)
 
 
+def lock(conn: _Conn, name: str) -> None:
+    """Hold a named lock until the transaction ends (SQLite's BEGIN IMMEDIATE
+    already serializes writers)."""
+    if IS_POSTGRES:
+        conn.execute("SELECT pg_advisory_xact_lock(hashtext(?))", (name,))
+
+
 def init_db() -> None:
     if IS_POSTGRES:
         import psycopg

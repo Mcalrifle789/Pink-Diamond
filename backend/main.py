@@ -260,42 +260,30 @@ def list_models(user: dict | None = Depends(optional_user)):
 _or_status_cache: dict = {}
 
 
-def _key_info(api_key: str) -> dict:
-    try:
-        with httpx.Client(timeout=10) as client:
-            resp = client.get("https://openrouter.ai/api/v1/key", headers={"Authorization": f"Bearer {api_key}"})
-    except httpx.HTTPError:
-        return {"ok": False, "detail": "OpenRouter unreachable"}
-    if resp.status_code != 200:
-        return {"ok": False, "detail": f"Key rejected ({resp.status_code})"}
-    data = resp.json().get("data", {})
-    return {"ok": True, "management": bool(data.get("is_management_key") or data.get("is_provisioning_key")),
-            "label": data.get("label")}
-
-
 @app.get("/api/openrouter/status")
 def openrouter_status():
     """Is OpenRouter connected? Never returns a key.
 
-    Pink Diamond needs the *management* key (OPENROUTER_MANAGEMENT_KEY) to mint
-    each paying user's own inference key; OPENROUTER_API_KEY is an optional
-    shared inference key for staging.
+    Pink Diamond needs the *management* key (OPENROUTER_MANAGEMENT_KEY, or
+    OPENROUTER_API_KEY when that holds one) to mint each paying user's own
+    inference key; an inference key in OPENROUTER_API_KEY is an optional
+    shared key for staging.
     """
     cached = _or_status_cache.get("value")
     if cached and time.time() - _or_status_cache.get("at", 0) < 300:
         return cached
     result = {"management_key": {"configured": False}, "shared_key": {"configured": False},
               "per_user_keys": False}
-    mgmt = env("OPENROUTER_MANAGEMENT_KEY")
+    mgmt = ork.management_key()
     if mgmt:
-        info = _key_info(mgmt)
+        info = ork.key_info(mgmt)
         result["management_key"] = {"configured": True, "valid": info["ok"] and info.get("management", False),
                                     "label": info.get("label"), "detail": info.get("detail")
                                     or ("ok" if info.get("management") else "not a management key")}
         result["per_user_keys"] = result["management_key"]["valid"] and ork.configured()
     shared = env("OPENROUTER_API_KEY")
-    if shared:
-        info = _key_info(shared)
+    if shared and shared != mgmt:
+        info = ork.key_info(shared)
         result["shared_key"] = {"configured": True, "inference_ready": info["ok"] and not info.get("management"),
                                 "label": info.get("label")}
     # Kept for older clients and native/go/orcheck.
@@ -320,7 +308,7 @@ def chat(body: ChatBody, user: dict = Depends(current_user)):
 
     # Spend comes out of the user's own OpenRouter key, whose limit is their
     # balance — OpenRouter itself refuses once it is used up.
-    api_key = ork.user_key(user) or env("OPENROUTER_API_KEY")
+    api_key = ork.user_key(user) or ork.shared_inference_key()
     if not api_key:
         raise HTTPException(503, "Model access isn't funded yet — top up to start")
 

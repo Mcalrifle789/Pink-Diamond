@@ -30,8 +30,52 @@ class KeyError_(RuntimeError):
     pass
 
 
+_kind_cache: dict[str, str] = {}
+
+
+def key_info(api_key: str) -> dict:
+    """What OpenRouter says about a key: valid? management or inference?"""
+    try:
+        with httpx.Client(timeout=10) as client:
+            resp = client.get(API + "/key", headers={"Authorization": f"Bearer {api_key}"})
+    except httpx.HTTPError:
+        return {"ok": False, "detail": "OpenRouter unreachable"}
+    if resp.status_code != 200:
+        return {"ok": False, "detail": f"Key rejected ({resp.status_code})"}
+    data = resp.json().get("data", {})
+    return {"ok": True, "management": bool(data.get("is_management_key") or data.get("is_provisioning_key")),
+            "label": data.get("label")}
+
+
+def key_kind(api_key: str) -> str:
+    """"management", "inference" or "invalid" (cached per process); "unknown" if unreachable."""
+    if api_key in _kind_cache:
+        return _kind_cache[api_key]
+    info = key_info(api_key)
+    if not info["ok"] and info["detail"] == "OpenRouter unreachable":
+        return "unknown"
+    kind = "invalid" if not info["ok"] else "management" if info["management"] else "inference"
+    _kind_cache[api_key] = kind
+    return kind
+
+
+def management_key() -> str:
+    """OPENROUTER_MANAGEMENT_KEY, or OPENROUTER_API_KEY when that holds a management key."""
+    explicit = env("OPENROUTER_MANAGEMENT_KEY")
+    if explicit:
+        return explicit
+    shared = env("OPENROUTER_API_KEY")
+    return shared if shared and key_kind(shared) == "management" else ""
+
+
+def shared_inference_key() -> str:
+    """OPENROUTER_API_KEY, but only when it can actually run chats."""
+    shared = env("OPENROUTER_API_KEY")
+    return shared if shared and key_kind(shared) == "inference" else ""
+
+
 def configured() -> bool:
-    return bool(env("OPENROUTER_MANAGEMENT_KEY") and env("PD_KEY_ENCRYPTION_SECRET"))
+    return bool(env("PD_KEY_ENCRYPTION_SECRET") and management_key())
 
 
 def _fernet():
@@ -52,9 +96,9 @@ def decrypt(token: str) -> str:
 
 
 def _mgmt(method: str, path: str, **kwargs) -> dict:
-    key = env("OPENROUTER_MANAGEMENT_KEY")
+    key = management_key()
     if not key:
-        raise KeyError_("OPENROUTER_MANAGEMENT_KEY is not set")
+        raise KeyError_("no OpenRouter management key is set")
     try:
         with httpx.Client(timeout=15) as client:
             resp = client.request(method, API + path, headers={"Authorization": f"Bearer {key}"}, **kwargs)

@@ -90,7 +90,15 @@ class FakeStripe:
             def create(**kw):
                 return SimpleNamespace(id="prod_uncensored")
 
+        class WebhookEndpoint:
+            @staticmethod
+            def create(**kw):
+                fake.webhooks.append(kw)
+                return SimpleNamespace(id=f"we_{len(fake.webhooks)}", secret=f"whsec_auto_{len(fake.webhooks)}")
+
+        self.webhooks = []
         self.Customer, self.Subscription, self.Product = Customer, Subscription, Product
+        self.WebhookEndpoint = WebhookEndpoint
         self.checkout = SimpleNamespace(Session=Session)
 
 
@@ -369,3 +377,41 @@ def test_demo_billing_closed_when_live():
         assert client.post("/api/subscribe", headers=headers, json={"plan": "go"}).status_code == 501
     finally:
         os.environ.pop("PD_DEMO_BILLING")
+
+
+def test_webhook_registers_itself_once(fakes, monkeypatch):
+    monkeypatch.delenv("STRIPE_WEBHOOK_SECRET")
+    monkeypatch.setenv("PD_PUBLIC_URL", "https://pink.example/")
+    cfg = client.get("/api/payments/config").json()
+    assert cfg["live"] is True and cfg["stripe_mode"] == "test", cfg["blockers"]
+    client.get("/api/payments/config")
+    assert len(fakes.stripe.webhooks) == 1
+    hook = fakes.stripe.webhooks[0]
+    assert hook["url"] == "https://pink.example/api/payments/webhook"
+    assert set(hook["enabled_events"]) == set(payments.WEBHOOK_EVENTS)
+    # The stored secret verifies deliveries; the old one no longer does.
+    event = evt("checkout.session.completed", {"mode": "payment", "payment_status": "unpaid"})
+    assert deliver(event, secret="whsec_auto_1").status_code == 200
+    assert deliver(evt("charge.refunded", {}), secret=SECRET).status_code == 400
+
+
+def test_webhook_not_registered_without_public_url(fakes, monkeypatch):
+    monkeypatch.delenv("STRIPE_WEBHOOK_SECRET")
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_other_account")
+    monkeypatch.delenv("PD_PUBLIC_URL", raising=False)
+    cfg = client.get("/api/payments/config").json()
+    assert cfg["live"] is False and any("webhook" in b for b in cfg["blockers"])
+    assert fakes.stripe.webhooks == []
+
+
+def test_management_key_accepted_in_openrouter_api_key(monkeypatch):
+    monkeypatch.delenv("OPENROUTER_MANAGEMENT_KEY")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-v1-mgmt-in-api-slot")
+    monkeypatch.setattr(ork, "_kind_cache", {})
+    monkeypatch.setattr(ork, "key_info", lambda k: {"ok": True, "management": True, "label": "m"})
+    assert ork.management_key() == "sk-or-v1-mgmt-in-api-slot"
+    assert ork.shared_inference_key() == ""          # never used for chat
+    assert ork.configured()
+    monkeypatch.setattr(ork, "_kind_cache", {})
+    monkeypatch.setattr(ork, "key_info", lambda k: {"ok": True, "management": False, "label": "i"})
+    assert ork.management_key() == "" and ork.shared_inference_key() == "sk-or-v1-mgmt-in-api-slot"

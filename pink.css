@@ -361,3 +361,49 @@ html[data-theme="porcelain"] .vortex-bg,html[data-theme="candlelight"] .vortex-b
 .model-opt .model-lock{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.12em;padding:2px 6px;border-radius:6px;border:1px solid var(--glass-brd);color:var(--muted)}
 .model-sep{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--muted);padding:10px 10px 4px}
 .model-upsell{padding:10px;border-radius:12px;background:var(--btn-bg);color:var(--btn-ink);font-size:12px;font-weight:600}
+
+/* ============================================================
+   Payment system — terms gate, checkout, Pink Credits
+   ============================================================ */
+.text-link{color:var(--accent);text-decoration:underline;text-underline-offset:2px;font:inherit;padding:0}
+.terms-row{display:flex;gap:10px;align-items:flex-start;margin:4px 0 16px;font-size:11px;line-height:1.5;color:var(--soft);cursor:pointer}
+.terms-row[hidden]{display:none}
+.terms-row input{display:inline-block;width:17px;height:17px;padding:0;margin:1px 0 0;flex:none;accent-color:var(--accent)}
+.terms-row input:disabled{opacity:.45}
+
+.terms-card,.checkout-card{width:min(640px,100%);max-height:92vh;display:flex;flex-direction:column}
+.terms-body{overflow-y:auto;max-height:46vh;padding:4px 14px 4px 2px;margin:6px 0 10px;font-size:12.5px;line-height:1.65;color:var(--soft);
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.terms-body h1{display:none}
+.terms-body h2{font-size:16px;font-family:inherit;letter-spacing:0;margin:22px 0 6px;color:var(--accent)}
+.terms-body h3{font-size:13px;margin:16px 0 4px;color:var(--ink)}
+.terms-body .callout{border:1px solid var(--glass-brd);border-radius:10px;padding:10px 14px;margin:10px 0;background:var(--heat-soft)}
+.terms-body .meta{font-size:11px;color:var(--muted)}
+.terms-progress{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--muted);margin:0 0 12px}
+
+.checkout-card{overflow-y:auto}
+.checkout-interval{align-self:flex-start;margin:4px 0 14px}
+.checkout-interval[hidden],#checkout-uncensored-row[hidden],#checkout-adult-row[hidden]{display:none}
+.checkout-credits b{color:var(--accent)}
+.checkout-disclosure{font-size:11.5px;line-height:1.6;color:var(--soft);border-left:2px solid var(--accent);padding:2px 0 2px 12px;margin:14px 0}
+.checkout-mount{min-height:420px;border-radius:12px;overflow:hidden;background:#fff}
+.checkout-mount[hidden]{display:none}
+
+.paygo-modal .usage-options{grid-template-columns:repeat(3,1fr)}
+.paygo-custom{display:flex;gap:10px;align-items:flex-end;margin-top:14px}
+.paygo-custom label{flex:1;margin:0}
+.paygo-custom-hint{color:var(--muted);margin-left:6px}
+.paygo-custom .ghost-button{white-space:nowrap;padding:13px 16px}
+
+/* Pink Credits balance in the agent sidebar */
+.agent-balance{display:flex;align-items:center;gap:8px;margin:0 2px 12px;padding:9px 12px;border-radius:12px;border:1px solid var(--glass-brd);
+  font-size:12px;color:var(--soft);text-align:left;transition:border-color .2s}
+.agent-balance:hover{border-color:var(--accent)}
+.agent-balance b{color:var(--ink)}
+.agent-balance small{margin-left:auto;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)}
+.agent-balance-gem{color:var(--accent)}
+.agent-balance.low{border-color:rgba(255,120,120,.5)}
+.agent-balance.low b{color:#ff9a9a}
+.modal-card .heat-check{display:flex;align-items:flex-start;gap:12px;font-family:inherit;font-size:12px;letter-spacing:0;line-height:1.5;color:var(--ink);margin-bottom:16px}
+.modal-card .heat-check input{display:inline-block;width:17px;height:17px;margin:1px 0 0;padding:0;flex:none}
+.primary-button:disabled{opacity:.42;cursor:not-allowed;transform:none}

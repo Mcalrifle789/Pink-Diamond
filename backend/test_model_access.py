@@ -8,11 +8,13 @@ import tempfile
 
 os.environ["PD_DB_PATH"] = os.path.join(tempfile.mkdtemp(), "test.db")
 os.environ["PD_DEMO_BILLING"] = "1"
-os.environ.pop("OPENROUTER_API_KEY", None)
+for name in ("OPENROUTER_API_KEY", "OPENROUTER_MANAGEMENT_KEY", "STRIPE_SECRET_KEY", "DATABASE_URL"):
+    os.environ.pop(name, None)
 
 import database as db  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
+import config  # noqa: E402
 import main  # noqa: E402
 
 db.init_db()
@@ -20,7 +22,8 @@ client = TestClient(main.app)
 
 
 def _account(name: str) -> dict:
-    token = client.post("/api/register", json={"username": name, "email": f"{name}@pd.test", "password": "pw123456"}).json()["token"]
+    token = client.post("/api/register", json={"username": name, "email": f"{name}@pd.test", "password": "pw123456",
+                                               "accept_terms": True, "terms_version": config.TERMS_VERSION}).json()["token"]
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -71,12 +74,12 @@ def test_billing_closed_without_demo_flag():
     os.environ.pop("PD_DEMO_BILLING")
     try:
         assert client.post("/api/subscribe", headers=headers, json={"plan": "max"}).status_code == 501
-        assert client.post("/api/topup", headers=headers, json={"dollars": 5}).status_code == 501
+        assert client.post("/api/topup", headers=headers, json={"amount_cents": 500}).status_code == 501
     finally:
         os.environ["PD_DEMO_BILLING"] = "1"
 
 
 def test_openrouter_status_without_key():
     status = client.get("/api/openrouter/status").json()
-    assert status == {"configured": False, "inference_ready": False,
-                      "detail": "OPENROUTER_API_KEY is not set in this environment"}
+    assert status["configured"] is False and status["inference_ready"] is False
+    assert status["per_user_keys"] is False

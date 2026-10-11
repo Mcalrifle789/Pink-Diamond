@@ -228,7 +228,7 @@
             <p>An optional add-on for any paid plan. The agent stops filtering, writes adult material, and routes to uncensored models. Not available on Free.</p>
           </div>
           <div class="addon-buy">
-            <b id="addon-price">+$18<i>/mo</i></b>
+            <b id="addon-price">+$10<i>/mo</i></b>
             <button class="magnetic heat-button" data-unfiltered-toggle>Add to plan <span>↗</span></button>
           </div>
         </div>
@@ -253,7 +253,7 @@
             </ul>
             <div class="heat-actions">
               <button class="primary-button heat-button magnetic gravity" data-unfiltered-toggle>Turn on Unfiltered Mode <span>↗</span></button>
-              <span class="heat-price" id="heat-price">+$18 / month on any paid plan</span>
+              <span class="heat-price" id="heat-price">+$10 / month on any paid plan</span>
             </div>
             <p class="heat-fine">Requires a paid plan and a one-time 18+ confirmation. Billed as a separate line on your subscription and cancellable at any time — turning the toggle off stops the charge at the end of the period.</p>
           </div>
@@ -316,7 +316,7 @@
       <section class="final-cta"><div class="final-diamond"></div><div class="section-label">08 — YOUR NEXT MOVE</div><h2>Make it<br /><em>count.</em></h2><p>The workspace for people who want their tools to feel as thoughtful as their work.</p><button class="primary-button magnetic gravity" data-launch-agent>Enter Pink Diamond <span>↗</span></button></section>
     </main>
 
-    <footer class="site-footer"><a class="brand" href="#top"><span class="brand-logo footer-logo pd-art pd-lockup" role="img" aria-label="Pink Diamond"></span></a><span>© 2026 PINK DIAMOND / CUT FOR CLARITY</span><div><a href="#security">Privacy</a><a href="#plans">Plans</a><a href="#top">Back to top ↑</a></div></footer>
+    <footer class="site-footer"><a class="brand" href="#top"><span class="brand-logo footer-logo pd-art pd-lockup" role="img" aria-label="Pink Diamond"></span></a><span>© 2026 PINK DIAMOND / CUT FOR CLARITY</span><div><a href="legal/terms.html">Terms &amp; Privacy</a><a href="#plans">Plans</a><a href="#top">Back to top ↑</a></div></footer>
   </div>
 
   <!-- ============ AGENT OVERLAY (full-screen chat) ============ -->
@@ -325,9 +325,10 @@
       <aside class="agent-sidebar">
         <div class="agent-model-row"><span>model:</span> <button id="agent-model" class="agent-model" aria-haspopup="listbox" aria-expanded="false" aria-controls="model-menu">Pink Diamond Lite</button></div>
         <div class="model-menu glass" id="model-menu" hidden></div>
+        <button class="agent-balance" id="agent-balance" data-paygo title="Pink Credits left before your model balance runs out — add more"><span class="agent-balance-gem">◈</span><span><b id="agent-credits">0</b> Pink Credits</span><small id="agent-dollars">$0.00</small></button>
         <button class="agent-heat" data-unfiltered-toggle role="switch" aria-checked="false">
           <span class="agent-heat-switch"><span class="heat-knob"></span></span>
-          <span class="agent-heat-text"><b>Unfiltered</b><small id="agent-heat-sub">off · +$18/mo</small></span>
+          <span class="agent-heat-text"><b>Unfiltered</b><small id="agent-heat-sub">off · +$10/mo</small></span>
         </button>
         <nav class="agent-nav">
           <button class="agent-nav-item active" data-agent-view="chat"><i>💬</i> New Chat</button>
@@ -367,7 +368,7 @@
   </div>
 
   <!-- ============ AUTH MODAL (email + password only, no Google) ============ -->
-  <div class="modal-backdrop" id="auth-modal" aria-hidden="true"><div class="modal-card glass"><button class="modal-close" data-close-modal aria-label="Close">×</button><div class="modal-kicker">PINK DIAMOND / <span id="modal-mode-label">WELCOME</span></div><h2 id="modal-title">Make room for<br /><em>better work.</em></h2><p id="modal-subtitle">Create your private facet in a few seconds.</p><form id="auth-form"><label>Email address<input type="email" name="email" placeholder="you@yourstudio.com" required /></label><label id="password-label">Password<input type="password" name="password" placeholder="••••••••" required minlength="6" /></label><button class="primary-button full magnetic" type="submit" id="auth-submit">Create facet <span>↗</span></button></form><div class="modal-switch"><span id="modal-switch-copy">Already have an account?</span><button type="button" id="modal-switch-button">Sign in</button></div><p class="modal-note">On creating an account you're issued a private API key — never shown to you — that connects Claude, OpenAI, Grok, Kimi, GLM, NVIDIA &amp; more via OpenRouter.</p></div></div>
+  <div class="modal-backdrop" id="auth-modal" aria-hidden="true"><div class="modal-card glass"><button class="modal-close" data-close-modal aria-label="Close">×</button><div class="modal-kicker">PINK DIAMOND / <span id="modal-mode-label">WELCOME</span></div><h2 id="modal-title">Make room for<br /><em>better work.</em></h2><p id="modal-subtitle">Create your private facet in a few seconds.</p><form id="auth-form"><label>Email address<input type="email" name="email" placeholder="you@yourstudio.com" required /></label><label id="password-label">Password<input type="password" name="password" placeholder="••••••••" required minlength="8" /></label><div class="terms-row" id="terms-row"><input type="checkbox" id="accept-terms" name="accept_terms" disabled /> <span>I have read and agree to the <button type="button" class="text-link" data-open-terms>Terms &amp; Agreement</button>, including the Privacy Policy and the AI creation guidelines. I am 18 or older.</span></div><button class="primary-button full magnetic" type="submit" id="auth-submit">Create facet <span>↗</span></button></form><div class="modal-switch"><span id="modal-switch-copy">Already have an account?</span><button type="button" id="modal-switch-button">Sign in</button></div><p class="modal-note">On creating an account you're issued a private API key — never shown to you — that connects Claude, OpenAI, Grok, Kimi, GLM, NVIDIA &amp; more via OpenRouter.</p></div></div>
 
   <!-- ============ PROFILE / SETTINGS OVERLAY ============ -->
   <div class="modal-backdrop" id="profile-modal" aria-hidden="true"><div class="modal-card profile-card glass"><button class="modal-close" data-close-modal aria-label="Close">×</button>
@@ -378,14 +379,16 @@
         <div class="stat glass"><span class="stat-label">SUBSCRIPTION</span><strong id="stat-tier">Free</strong></div>
         <div class="stat glass"><span class="stat-label">MEMBER SINCE</span><strong id="stat-created">—</strong></div>
         <div class="stat glass"><span class="stat-label">ACCOUNT AGE</span><strong id="stat-age">—</strong></div>
-        <div class="stat glass"><span class="stat-label">CREDITS USED</span><strong id="stat-credits">0</strong></div>
+        <div class="stat glass"><span class="stat-label">PINK CREDITS</span><strong id="stat-credits">0</strong></div>
       </div>
       <div class="api-key-row glass"><span class="stat-label">PRIVATE API KEY</span><code id="stat-key">•••• •••• •••• hidden</code><span class="key-hint">issued · never shown</span></div>
-      <div class="api-key-row glass"><span class="stat-label">API KEY BALANCE</span><code id="stat-api-balance">$0.00</code><span class="key-hint" id="api-balance-hint">50% of every payment funds this key</span></div>
+      <div class="api-key-row glass"><span class="stat-label">MODEL BALANCE</span><code id="stat-api-balance">$0.00</code><span class="key-hint" id="api-balance-hint">50% of every subscription payment funds it</span></div>
       <div class="timeline"><span class="stat-label">CREDIT TIMELINE</span><div class="timeline-bars" id="timeline-bars"></div></div>
     </div>
     <div class="profile-panel" data-panel="settings" hidden>
-      <div class="setting-row heat-setting"><div><strong>Unfiltered Mode <span class="heat-tag">18+</span></strong><p>Uncensored answers and adult creative output. Paid add-on, <b id="setting-heat-price">+$18/mo</b>.</p></div><div class="heat-setting-actions"><button class="revoke-link" id="revoke-adult" hidden>revoke 18+</button><button class="pill-toggle heat-pill-toggle" data-unfiltered-toggle aria-pressed="false"><span id="setting-heat-state">Off</span></button></div></div>
+      <div class="setting-row heat-setting"><div><strong>Unfiltered Mode <span class="heat-tag">18+</span></strong><p>Uncensored answers and adult creative output. Paid add-on, <b id="setting-heat-price">+$10/mo</b>.</p></div><div class="heat-setting-actions"><button class="revoke-link" id="revoke-adult" hidden>revoke 18+</button><button class="pill-toggle heat-pill-toggle" data-unfiltered-toggle aria-pressed="false"><span id="setting-heat-state">Off</span></button></div></div>
+      <div class="setting-row"><div><strong>Manage billing</strong><p>Saved cards, invoices, and cancelling auto-renewal (takes effect at the end of the period).</p></div><button class="ghost-button" id="manage-billing">Manage</button></div>
+      <div class="setting-row"><div><strong>Terms &amp; Agreement</strong><p>Terms of Service, Privacy Policy and AI creation guidelines.</p></div><a class="ghost-button" href="legal/terms.html" target="_blank" rel="noopener">Read</a></div>
       <div class="setting-row"><div><strong>Appearance</strong><p>Ten facets. Your choice is saved to your account and restored on sign-in.</p></div><select id="theme-select" class="ghost-select"></select></div>
       <div class="setting-row"><div><strong>Change password</strong><p>Update your account password.</p></div><button class="ghost-button" id="change-pass">Change</button></div>
       <div class="setting-row"><div><strong>Add models</strong><p>Enable more models from your provider.</p></div><button class="ghost-button" id="add-models">Manage</button></div>
@@ -396,7 +399,36 @@
   </div></div>
 
   <!-- ============ PAY AS YOU GO ============ -->
-  <div class="modal-backdrop" id="paygo-modal" aria-hidden="true"><div class="modal-card paygo-modal glass"><button class="modal-close" data-close-modal aria-label="Close">×</button><div class="modal-kicker">USAGE / FLEXIBLE</div><h2>Keep the<br /><em>momentum.</em></h2><p>Add credits to your facet whenever you need more runway. Your balance stays yours until you use it.</p><div class="usage-options"><button data-credits="10"><strong>$10</strong><span>100 credits</span></button><button data-credits="25"><strong>$25</strong><span>275 credits</span></button><button data-credits="50"><strong>$50</strong><span>600 credits</span></button></div></div></div>
+  <div class="modal-backdrop" id="paygo-modal" aria-hidden="true"><div class="modal-card paygo-modal glass"><button class="modal-close" data-close-modal aria-label="Close">×</button><div class="modal-kicker">USAGE / FLEXIBLE</div><h2>Keep the<br /><em>momentum.</em></h2><p>Add Pink Credits whenever you need more runway. <b>$1 = 100 Pink Credits.</b> Your balance stays yours until you use it.</p><div class="usage-options" id="paygo-options"><button data-topup="1000"><strong>$10</strong><span>1,000 credits</span></button><button data-topup="2000"><strong>$20</strong><span>2,000 credits</span></button><button data-topup="5000"><strong>$50</strong><span>5,000 credits</span></button><button data-topup="10000"><strong>$100</strong><span>10,000 credits</span></button><button data-topup="25000"><strong>$250</strong><span>25,000 credits</span></button><button data-topup="50000"><strong>$500</strong><span>50,000 credits</span></button></div><form class="paygo-custom" id="paygo-custom-form"><label>Custom… <span class="paygo-custom-hint">$5 – $1,000</span><input type="number" id="paygo-custom" min="5" max="1000" step="0.01" inputmode="decimal" placeholder="e.g. 35" /></label><button type="submit" class="ghost-button">Add <b id="paygo-custom-credits">0</b> credits</button></form></div></div>
+
+  <!-- ============ TERMS & AGREEMENT ============ -->
+  <div class="modal-backdrop" id="terms-modal" aria-hidden="true"><div class="modal-card terms-card glass">
+    <button class="modal-close" data-close-modal aria-label="Close">×</button>
+    <div class="modal-kicker">LEGAL / <span>TERMS &amp; AGREEMENT</span></div>
+    <h2>Read before<br /><em>you begin.</em></h2>
+    <div class="terms-body" id="terms-body" tabindex="0" aria-label="Terms &amp; Agreement">Loading…</div>
+    <p class="terms-progress" id="terms-progress">Scroll to the end to continue.</p>
+    <button class="primary-button full magnetic" id="terms-accept" disabled>I have read and agree <span>↗</span></button>
+    <p class="modal-note"><a href="legal/terms.html" target="_blank" rel="noopener">Open the full document in a new tab</a></p>
+  </div></div>
+
+  <!-- ============ CHECKOUT (Stripe embedded) ============ -->
+  <div class="modal-backdrop" id="checkout-modal" aria-hidden="true"><div class="modal-card checkout-card glass">
+    <button class="modal-close" data-close-modal aria-label="Close">×</button>
+    <div class="modal-kicker">CHECKOUT / <span id="checkout-kind">SUBSCRIPTION</span></div>
+    <div id="checkout-review">
+      <h2 id="checkout-title">Your plan</h2>
+      <div class="billing-toggle checkout-interval" id="checkout-interval"><button type="button" data-interval="month" class="active">Monthly</button><button type="button" data-interval="year">Yearly <small>save 20%</small></button></div>
+      <div class="addon-lines" id="checkout-lines"></div>
+      <label class="heat-check" id="checkout-uncensored-row"><input type="checkbox" id="checkout-uncensored" /> <span>Add <b>Uncensored Mode</b> (18+) <b id="checkout-uncensored-price">+$10/mo</b></span></label>
+      <label class="heat-check" id="checkout-adult-row" hidden><input type="checkbox" id="checkout-adult" /> <span>I am 18 or older and accept the Uncensored Mode rules in the creation guidelines.</span></label>
+      <p class="checkout-disclosure" id="checkout-disclosure"></p>
+      <label class="heat-check" id="checkout-consent-row"><input type="checkbox" id="checkout-consent" /> <span id="checkout-consent-text">I agree to automatic renewal.</span></label>
+      <button class="primary-button full magnetic" id="checkout-continue" disabled>Continue to secure payment <span>↗</span></button>
+      <p class="modal-note" id="checkout-note">Payments are processed by Stripe. Card details go straight to Stripe and are never stored by Pink Diamond. Cards you choose to save fill in automatically next time.</p>
+    </div>
+    <div class="checkout-mount" id="checkout-mount" hidden></div>
+  </div></div>
 
   <!-- ============ AD LAYOUT: bottom banner unit (est. $470/mo) ============ -->
   <div class="ad-leaderboard" aria-label="Advertisement">
@@ -430,10 +462,10 @@
       <h2>One extra line<br /><em>on your bill.</em></h2>
       <div class="addon-lines">
         <div class="addon-line"><span>Current plan</span><b id="addon-plan">—</b></div>
-        <div class="addon-line"><span>Unfiltered Mode add-on</span><b id="addon-line-price">+$18.00</b></div>
+        <div class="addon-line"><span>Uncensored Mode add-on</span><b id="addon-line-price">+$10.00</b></div>
         <div class="addon-line addon-total"><span>New total</span><b id="addon-total">—</b></div>
       </div>
-      <p class="addon-note">Charged on the same cycle as your plan. Half of every payment funds the private API key issued to your account — the same 50/50 split as the base subscription.</p>
+      <p class="addon-note">Charged on the same cycle as your plan and renews with it until you cancel; the first period is prorated. Half of every payment becomes Pink Credits — the same 50/50 split as the base subscription.</p>
       <button class="primary-button heat-button full magnetic" id="addon-confirm">Enable Unfiltered Mode <span>↗</span></button>
       <button class="text-button addon-cancel" data-close-modal>Not now</button>
     </div>
@@ -445,6 +477,7 @@
   <script src="audio-studio.js"></script>
   <script src="app.js"></script>
   <script src="unfiltered.js"></script>
+  <script src="payments.js"></script>
   <script src="ads.js"></script>
 </body>
 </html>

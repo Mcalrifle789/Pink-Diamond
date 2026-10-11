@@ -250,10 +250,9 @@ repriced add-on checkout and a zero-console-error pass.
   clock-driven rotation, new revenue table, C ABI), Rust
   (`native/rust/pink-access`, `cargo test`), Go (`native/go/orcheck`,
   `go test`).
-- **Billing guard** — `/api/subscribe`, `/api/topup` and
-  `/api/subscribe/pink-mode` return 501 unless `PD_DEMO_BILLING=1`. No payment
-  provider is wired yet, and without the guard anyone could grant themselves
-  a plan and spend the OpenRouter key.
+- **Billing guard** — the demo endpoints `/api/subscribe` and `/api/topup`
+  return 501 unless `PD_DEMO_BILLING=1`; real money goes through the payment
+  system below.
 - **Fixes found along the way** — `database/schema.sql` had a trailing comma
   that stopped the database from initializing (the deployed API couldn't
   create accounts); session tokens were signed and verified against
@@ -261,5 +260,41 @@ repriced add-on checkout and a zero-console-error pass.
   grant their monthly credits; `/api/me` crashed on a naive timestamp; the
   three uncensored OpenRouter model ids no longer existed.
 
-Tests: `node verify.mjs` (47 checks), `python -m pytest backend/test_model_access.py`,
+Tests: `node verify.mjs` (71 checks), `python -m pytest backend/test_model_access.py`
+and `python -m pytest backend/test_payments.py` (run separately),
 `cargo test` in `native/rust/pink-access`, `go test ./...` in `native/go/orcheck`.
+
+## Payment system (Oct 2026, `Pink_Diamond_Payment_System.pdf`)
+
+- **Native core in C, C++ and Zig** — `native/payments/`: `pd_sig.c` verifies
+  Stripe webhook signatures (HMAC-SHA256, constant-time compare, replay
+  window), `pd_money.zig` does all money math (50% split, $1 = 100 Pink
+  Credits, yearly = 12 months at 20% off, top-up bounds $5–$1,000), and
+  `pd_lifecycle.cpp` is the subscription state machine. `python
+  native/payments/build.py` builds `backend/native/pd_pay.dll` and the
+  Linux `.so` that ships with the Vercel function; `backend/payments_core.py`
+  loads it and keeps an identical Python mirror as a fallback.
+- **Cards** — collected by Stripe Checkout (embedded), so card numbers never
+  touch Pink Diamond (PCI-DSS SAQ A). Saved cards autofill on later purchases
+  through Stripe's saved payment methods, with the customer's consent.
+- **Subscriptions** — monthly or yearly, auto-renewing via Stripe Billing.
+  Checkout states price, interval, renewal and how to cancel, and requires an
+  explicit auto-renewal consent tick; cancelling is in Settings → Manage
+  billing (Stripe customer portal).
+- **50% split** — half of every subscription payment becomes Pink Credits,
+  funded onto the user's own OpenRouter key, which is created from the
+  management key. `/api/balance` shows what's left before OpenRouter runs out.
+- **Pay-as-you-go** — $10 / $20 / $50 / $100 / $250 / $500 / custom.
+- **Terms & Agreement** — `legal/terms.html` (Terms of Service, Privacy
+  Policy, AI creation guidelines) must be accepted at sign-up; bumping
+  `TERMS_VERSION` makes users re-accept. Uncensored Mode is a +$10 add-on
+  for adults.
+- **Only webhooks move money** — signed Stripe webhooks (`/api/payments/webhook`)
+  credit accounts, each event exactly once.
+
+Payments stay off (`/api/payments/config` → `live: false`, demo checkout in
+the UI) until **all** of these are set in Vercel: `STRIPE_SECRET_KEY`,
+`STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` (endpoint
+`https://<site>/api/payments/webhook`), `OPENROUTER_MANAGEMENT_KEY`,
+`PD_KEY_ENCRYPTION_SECRET`, `PD_SESSION_SECRET`, and `DATABASE_URL`
+pointing at Postgres (`database/schema.postgres.sql`).

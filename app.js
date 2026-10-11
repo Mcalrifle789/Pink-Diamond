@@ -180,6 +180,8 @@ function openAuth(mode = 'signup') {
   $('#auth-submit').innerHTML = signin ? 'Enter facet <span>↗</span>' : 'Create facet <span>↗</span>';
   $('#modal-switch-copy').textContent = signin ? 'New to Pink Diamond?' : 'Already have an account?';
   $('#modal-switch-button').textContent = signin ? 'Create an account' : 'Sign in';
+  const termsRow = $('#terms-row');
+  if (termsRow) termsRow.hidden = signin;
   openModal('#auth-modal');
   setTimeout(() => authModal.querySelector('input')?.focus(), 100);
 }
@@ -194,10 +196,12 @@ function linkBackend(email, password) {
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     .then(r => (r.ok ? r.json() : Promise.reject(r.status)));
   post('/api/login', { username: email, password })
-    .catch(() => post('/api/register', { username: email, email, password }))
+    .catch(() => post('/api/register', { username: email, email, password, accept_terms: true,
+      terms_version: window.PinkPay?.termsVersion() }))
     .then(d => {
       const a = accounts();
       if (d?.token && a[email]) { a[email].apiToken = d.token; saveAccounts(a); }
+      window.PinkPay?.syncFromServer();
     })
     .catch(() => {});
 }
@@ -210,8 +214,10 @@ $('#auth-form').addEventListener('submit', e => {
   const acc = accounts();
   if (authMode === 'signup') {
     if (acc[email]) return showToast('That account already exists - try signing in.');
+    // Payment spec §5: the Terms & Agreement must be read and accepted first.
+    if (!$('#accept-terms')?.checked) { window.PinkPay?.openTerms(); return showToast('Read and accept the Terms & Agreement to create your account.'); }
     acc[email] = { email, password, created: new Date().toISOString(), tier: 'Free', credits: 0, apiKey: makeKey(),
-      apiBalance: 0, theme: 'neon-rose',
+      apiBalance: 0, theme: 'neon-rose', termsVersion: window.PinkPay?.termsVersion(), termsAcceptedAt: new Date().toISOString(),
       models: ['Nano Banana Pro', 'Seedance 2.5'], adult: false, unfiltered: false };
     saveAccounts(acc);
     store.set('pk_session', email);
@@ -226,12 +232,17 @@ $('#auth-form').addEventListener('submit', e => {
   }
   linkBackend(email, password);
   e.target.reset();
+  const termsBox = $('#accept-terms');
+  if (termsBox) { termsBox.checked = false; termsBox.disabled = true; }
   closeModal(authModal);
   refreshAuthUI();
   renderHeat();
   renderModelPicker();
   const pending = store.get('pk_pending_heat', false);
   if (pending) { store.set('pk_pending_heat', false); setTimeout(requestUnfiltered, 400); }
+  const pendingPlan = store.get('pk_pending_plan', null);
+  if (pendingPlan && !pending) { store.set('pk_pending_plan', null); setTimeout(() => window.PinkPay?.openPlanCheckout(pendingPlan), 400); }
+  window.PinkPay?.renderBalance();
 });
 
 /* ============ PROFILE + SETTINGS ============ */
@@ -252,11 +263,7 @@ function openProfile() {
   $('#stat-tier').textContent = user.tier;
   $('#stat-created').textContent = fmtDate(user.created);
   $('#stat-age').textContent = ageString(user.created);
-  $('#stat-credits').textContent = user.credits;
-  $('#stat-api-balance').textContent = `$${(user.apiBalance || 0).toFixed(2)}`;
-  $('#api-balance-hint').textContent = (user.apiBalance || 0) <= 0.5
-    ? 'Low balance — top up or subscribe to keep generating'
-    : '50% of every payment funds this key';
+  window.PinkPay?.renderBalance();
   renderHeat();
   // credit timeline (deterministic-ish demo based on account)
   const bars = $('#timeline-bars'); bars.innerHTML = '';
@@ -340,28 +347,39 @@ function renderPlans() {
   }).join('');
   $$('#plan-grid [data-plan]').forEach(b => b.addEventListener('click', () => {
     const plan = b.dataset.plan;
-    const price = PLANS.find(x => x.key === plan)?.price || 0;
-    const user = currentUser();
-    if (user) {
-      const a = accounts(); a[user.email].tier = plan;
-      // API-key funding model: half of every payment funds the user's private key.
-      if (price > 0) {
-        a[user.email].apiBalance = (a[user.email].apiBalance || 0) + price / 2;
-        showToast(`${plan} active — $${(price / 2).toFixed(2)} added to your API key balance.`);
-      } else {
-        showToast(`${plan} is now your plan.`);
-      }
-      if (plan === 'Free') { a[user.email].unfiltered = false; a[user.email].modelChoice = {}; }
-      saveAccounts(a);
-      renderModelPicker();
-      window.PinkAds?.track('subscribe', { tier: plan, value: price, currency: 'USD' });
-      renderHeat();
-    }
+    if (currentUser()) window.PinkPay.openPlanCheckout(plan);
     else { store.set('pk_pending_plan', plan); openAuth('signup'); showToast(`${plan} selected - create your facet to continue.`); }
   }));
   // re-bind magnetic on freshly created buttons
   $$('#plan-grid .magnetic').forEach(bindMagnetic);
 }
+/* Plan state on this device. With live payments this only mirrors what the
+   server reports after Stripe confirms; in demo mode it is the whole story. */
+function applyPlanLocally(plan, interval = 'month', uncensored = false) {
+  const user = currentUser(); if (!user) return;
+  const monthly = PLANS.find(x => x.key === plan)?.price || 0;
+  const yearly = cents => Math.floor((12 * cents * 80 + 50) / 100);
+  const toCents = d => Math.round(d * 100);
+  let paid = interval === 'year' ? yearly(toCents(monthly)) : toCents(monthly);
+  if (uncensored && monthly > 0) paid += interval === 'year' ? yearly(toCents(HEAT.price)) : toCents(HEAT.price);
+  const a = accounts(); a[user.email].tier = plan; a[user.email].interval = interval;
+  // Half of every subscription payment becomes Pink Credits ($1 = 100 credits).
+  const share = paid - Math.floor(paid / 2);
+  if (paid > 0) {
+    a[user.email].apiBalance = (a[user.email].apiBalance || 0) + share / 100;
+    showToast(`Demo: ${plan} active — ${share.toLocaleString('en-US')} Pink Credits added. No card was charged.`);
+  } else {
+    showToast(`${plan} is now your plan.`);
+  }
+  if (plan === 'Free') { a[user.email].unfiltered = false; a[user.email].modelChoice = {}; }
+  if (uncensored && monthly > 0) { a[user.email].adult = true; a[user.email].unfiltered = true; }
+  saveAccounts(a);
+  renderModelPicker();
+  window.PinkAds?.track('subscribe', { tier: plan, value: paid / 100, currency: 'USD' });
+  renderHeat();
+  window.PinkPay?.renderBalance();
+}
+
 function bindMagnetic(btn) {
   btn.addEventListener('mousemove', e => {
     const r = btn.getBoundingClientRect();
@@ -369,8 +387,8 @@ function bindMagnetic(btn) {
     btn.style.setProperty('--my', (e.clientY - r.top) + 'px');
   });
 }
-$$('.billing-toggle button').forEach(b => b.addEventListener('click', () => {
-  $$('.billing-toggle button').forEach(x => x.classList.remove('active'));
+$$('.plans-heading .billing-toggle button').forEach(b => b.addEventListener('click', () => {
+  $$('.plans-heading .billing-toggle button').forEach(x => x.classList.remove('active'));
   b.classList.add('active');
   billing = b.dataset.billing;
   renderPlans();
@@ -380,15 +398,7 @@ $$('.billing-toggle button').forEach(b => b.addEventListener('click', () => {
 renderPlans();
 
 /* ============ PAY AS YOU GO ============ */
-$('[data-paygo]')?.addEventListener('click', () => openModal('#paygo-modal'));
-$$('[data-credits]').forEach(b => b.addEventListener('click', () => {
-  const c = Number(b.dataset.credits);
-  const user = currentUser();
-  if (user) { const a = accounts(); a[user.email].credits = (a[user.email].credits || 0) + c * 10; a[user.email].apiBalance = (a[user.email].apiBalance || 0) + c / 2; saveAccounts(a); }
-  closeModal($('#paygo-modal'));
-  window.PinkAds?.track('creditPack', { value: c, currency: 'USD' });
-  showToast(`A $${c} credit pack was added — half of it funds your API key.`);
-}));
+$$('[data-paygo]').forEach(b => b.addEventListener('click', () => openModal('#paygo-modal')));
 
 /* ============ AGENT (chatbox + client-side AI) ============ */
 const agent = $('#agent');
@@ -592,17 +602,22 @@ $('#agent-form')?.addEventListener('submit', async e => {
       liveFallbackNoticed = true;
       addNotice(`${model.label} isn't connected yet — Pink Diamond Lite answered instead.`);
     }
+    // Pink Credits pay for paid models only; Pink Diamond Lite is free. A live
+    // reply was already metered by OpenRouter against the user's own key.
     const user = currentUser();
-    if (user) {
+    const paidRoute = isUnfiltered() || model.id !== AGENTS.chat.house.id;
+    if (user && paidRoute) {
       const a = accounts();
-      a[user.email].credits = (a[user.email].credits || 0) + (isUnfiltered() ? HEAT.creditCost : 1);
-      saveAccounts(a);
+      if (live === null) {      // demo: draw the same per-message cost locally
+        const cost = (isUnfiltered() ? HEAT.creditCost : 1) / 100;
+        a[user.email].apiBalance = Math.max(0, (a[user.email].apiBalance || 0) - cost);
+        saveAccounts(a);
+      }
       // Low / zero balance notice — a first-class product feature, not a nag.
-      const left = a[user.email].credits;
-      const bal = a[user.email].apiBalance || 0;
-      if (left <= 0) addNotice('You are out of credits. Generation pauses until you top up or upgrade.');
-      else if (left <= 25) addNotice(`Low credits: ${left} left. Top up from Plans → Pay as you go.`);
-      if (bal <= 0.5 && a[user.email].tier !== 'Free') addNotice('API key balance is low — half of every payment funds it. Top up anytime.');
+      window.PinkPay?.renderBalance().then(left => {
+        if (left <= 0) addNotice('You are out of Pink Credits. Paid models pause until you top up.');
+        else if (left <= 50) addNotice(`Low balance: ${left} Pink Credits left. Top up from Plans → Pay as you go.`);
+      });
     }
   }, Math.max(0, 650 + Math.random() * 500 - (Date.now() - started)));
 });

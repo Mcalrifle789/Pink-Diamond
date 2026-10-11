@@ -13,7 +13,7 @@
 'use strict';
 
 const HEAT = {
-  price: 18,           // USD / month, on top of the plan
+  price: 10,           // USD / month, on top of the plan (payment spec §5)
   yearlyFactor: 0.8,   // matches the 20% yearly saving on plans
   creditCost: 2,       // credits per unfiltered message (vs 1 filtered)
   // First two mirror backend UNFILTERED_MODELS (the real OpenRouter routes).
@@ -126,14 +126,24 @@ function openAddonCheckout() {
   openModal('#addon-modal');
 }
 
-function enableUnfiltered() {
+async function enableUnfiltered() {
+  // Live payments: the +$10 item is added to the Stripe subscription (prorated)
+  // and the server grants the entitlement. Demo: this device only.
+  if (!(await (window.PinkPay?.setUncensored(true) ?? true))) return;
+  if (!window.PinkPay?.live()) {
+    const share = Math.round(heatPrice() * 100) - Math.floor(Math.round(heatPrice() * 100) / 2);
+    const u = currentUser();
+    patchUser({ apiBalance: (u.apiBalance || 0) + share / 100 });
+    window.PinkPay?.renderBalance();
+  }
   patchUser({ unfiltered: true, unfilteredSince: new Date().toISOString() });
   renderHeat();
   window.PinkAds?.track('unfilteredAddon', { value: heatPrice(), currency: 'USD', tier: currentUser().tier });
   showToast('Unfiltered Mode is on. ' + heatPriceLabel() + ' added to your subscription.');
 }
 
-function disableUnfiltered() {
+async function disableUnfiltered() {
+  if (!(await (window.PinkPay?.setUncensored(false) ?? true))) return;
   patchUser({ unfiltered: false });
   renderHeat();
   window.PinkAds?.track('unfilteredCancel', {});

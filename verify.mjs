@@ -101,19 +101,80 @@ check('toggle without account opens sign-up', await page.locator('#auth-modal.op
 
 await page.fill('#auth-form input[name="email"]', 'mike@pinkdiamond.test');
 await page.fill('#auth-form input[name="password"]', 'diamond99');
+
+/* ---------- payment spec §5: Terms & Agreement before an account ---------- */
+check('terms checkbox locked until read', await page.locator('#accept-terms').isDisabled());
+await page.click('#auth-submit');
+await page.waitForTimeout(900);
+check('sign-up without terms is refused', await page.evaluate(() => !localStorage.pk_accounts || !JSON.parse(localStorage.pk_accounts)['mike@pinkdiamond.test']));
+check('refusal opens the Terms & Agreement', await page.locator('#terms-modal.open').isVisible());
+check('terms include privacy policy + creation guidelines',
+  /Privacy Policy/.test(await page.locator('#terms-body').innerText()) && /Creation Guidelines/.test(await page.locator('#terms-body').innerText()));
+check('accept disabled until scrolled to the end', await page.locator('#terms-accept').isDisabled());
+await page.screenshot({ path: OUT + '/13-terms.png' });
+await page.locator('#terms-body').evaluate(el => { el.scrollTop = el.scrollHeight; });
+await page.waitForTimeout(300);
+check('accept enabled at the end', !(await page.locator('#terms-accept').isDisabled()));
+await page.click('#terms-accept');
+await page.waitForTimeout(400);
+check('accepting ticks the sign-up checkbox', await page.locator('#accept-terms').isChecked());
 await page.click('#auth-submit');
 await page.waitForTimeout(1400);
 check('account created', !(await page.locator('#auth-modal.open').isVisible()));
+check('terms acceptance recorded on the account', await page.evaluate(() =>
+  JSON.parse(localStorage.pk_accounts)['mike@pinkdiamond.test'].termsVersion === '2026-10-10'));
 
 /* pending intent resumes -> Free plan cannot buy the add-on */
 await page.waitForTimeout(600);
 const toast1 = await page.locator('.toast').innerText();
 check('Free plan is refused the add-on', /paid plan/i.test(toast1), toast1);
 
-/* ---------- buy a plan, then the add-on ---------- */
+/* ---------- buy a plan through checkout, then the add-on ---------- */
 await page.locator('#plan-grid [data-plan="Plus"]').scrollIntoViewIfNeeded();
 await page.click('#plan-grid [data-plan="Plus"]');
 await page.waitForTimeout(700);
+check('plan opens checkout', await page.locator('#checkout-modal.open').isVisible());
+check('checkout total is $22.99', (await page.locator('#checkout-total').innerText()) === '$22.99');
+const disclosure = await page.locator('#checkout-disclosure').innerText();
+check('auto-renewal disclosed before paying', /Renews automatically every month at \$22\.99/.test(disclosure) && /Cancel anytime/.test(disclosure), disclosure.slice(0, 70));
+check('50% of payment shown as Pink Credits', /1,150 credits/.test(await page.locator('#checkout-lines').innerText()));
+check('pay disabled before renewal consent', await page.locator('#checkout-continue').isDisabled());
+await page.click('#checkout-interval [data-interval="year"]');
+await page.waitForTimeout(200);
+check('yearly is 12 months at 20% off', (await page.locator('#checkout-total').innerText()) === '$220.70');
+await page.click('#checkout-interval [data-interval="month"]');
+await page.check('#checkout-uncensored');
+await page.waitForTimeout(200);
+check('uncensored add-on is +$10', (await page.locator('#checkout-total').innerText()) === '$32.99');
+await page.check('#checkout-consent');
+check('uncensored needs the 18+ confirmation', await page.locator('#checkout-continue').isDisabled());
+await page.uncheck('#checkout-uncensored');
+await page.waitForTimeout(200);
+check('consent enables payment', !(await page.locator('#checkout-continue').isDisabled()));
+check('demo mode is labelled as no charge', /no charge/i.test(await page.locator('#checkout-continue').innerText()));
+await page.screenshot({ path: OUT + '/14-checkout.png' });
+await page.click('#checkout-continue');
+await page.waitForTimeout(700);
+check('Plus active after checkout', await page.evaluate(() => JSON.parse(localStorage.pk_accounts)['mike@pinkdiamond.test'].tier === 'Plus'));
+check('balance shows 1,150 Pink Credits', (await page.locator('#agent-credits').innerText()) === '1,150');
+
+/* ---------- pay as you go ---------- */
+await page.locator('.paygo [data-paygo]').scrollIntoViewIfNeeded();
+await page.click('.paygo [data-paygo]');
+await page.waitForTimeout(500);
+const presets = await page.locator('#paygo-options [data-topup] strong').allInnerTexts();
+check('top-up presets $10 $20 $50 $100 $250 $500', presets.join(' ') === '$10 $20 $50 $100 $250 $500', presets.join(' '));
+await page.fill('#paygo-custom', '35');
+check('custom $35 = 3,500 credits', (await page.locator('#paygo-custom-credits').innerText()) === '3,500');
+await page.screenshot({ path: OUT + '/15-paygo.png' });
+await page.click('#paygo-custom-form button[type="submit"]');
+await page.waitForTimeout(500);
+check('top-up opens one-time checkout', /PAY AS YOU GO/.test(await page.locator('#checkout-kind').innerText()) &&
+  /not a subscription/.test(await page.locator('#checkout-disclosure').innerText()));
+await page.check('#checkout-consent');
+await page.click('#checkout-continue');
+await page.waitForTimeout(600);
+check('top-up adds 3,500 credits', (await page.locator('#agent-credits').innerText()) === '4,650');
 
 await page.locator('#addon-strip [data-unfiltered-toggle]').scrollIntoViewIfNeeded();
 await page.screenshot({ path: OUT + '/02-plans-addon.png' });
@@ -129,7 +190,7 @@ await page.click('#adult-continue');
 await page.waitForTimeout(700);
 check('add-on checkout appears', await page.locator('#addon-modal.open').isVisible());
 const total = await page.locator('#addon-total').innerText();
-check('Plus $22.99 + $18 = $40.99 total', /40\.99/.test(total), total);
+check('Plus $22.99 + $10 = $32.99 total', /32\.99/.test(total), total);
 await page.screenshot({ path: OUT + '/04-addon-checkout.png' });
 
 await page.click('#addon-confirm');

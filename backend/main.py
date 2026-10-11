@@ -1,8 +1,9 @@
 """Pink Diamond backend API.
 
 Python (FastAPI) service that owns everything the browser must not be trusted
-with: accounts, subscriptions, the Pink Mode entitlement, credit accounting,
-and the OpenRouter proxy that holds the real API key.
+with: accounts and the Terms acceptance, subscriptions and the Uncensored
+Mode entitlement, payments (payments.py, on the C/C++/Zig core), each user's
+OpenRouter key, and the chat proxy.
 
 Run:  uvicorn main:app --reload --port 4400
 """
@@ -10,22 +11,22 @@ Run:  uvicorn main:app --reload --port 4400
 from __future__ import annotations
 
 import hashlib
-import hmac
 import os
 import secrets
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import httpx
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 
 import database as db
-
-PLAN_PRICES_CENTS = {"go": 1199, "plus": 2299, "pro": 3399, "max": 12199}
-PLAN_CREDITS = {"go": 2000, "plus": 3500, "pro": 8300, "max": 16660}
-PINK_MODE_PRICE_CENTS = 1800          # +$18/mo add-on (see unfiltered.js HEAT.price)
-PINK_MODE_CREDIT_MULTIPLIER = 2       # 2 credits per message, per the site spec
+import openrouter_keys as ork
+import payments
+import payments_core as core
+from auth import current_user, hash_password, optional_user, password_matches, sign
+from config import PLAN_CREDITS, PLAN_PRICES_CENTS, TERMS_VERSION, UNCENSORED_PRICE_CENTS, env
+from entitlement import current_subscription, pink_active, subscribed
 
 # Uncensored routing only ever happens after the server-side entitlement check.
 UNFILTERED_MODELS = [
@@ -51,90 +52,12 @@ OPENROUTER_MODELS = {
 }
 
 app = FastAPI(title="Pink Diamond API")
-_secret = os.environ.get("PD_SESSION_SECRET", "dev-secret-change-me")
+app.include_router(payments.router)
 
 
-# ---------------------------------------------------------------- sessions ---
-
-SESSION_WINDOW_SECONDS = 7 * 24 * 3600
-
-
-def _sign(user_id: int) -> str:
-    # Same weekly bucket as _verify — signing with the raw timestamp made every
-    # token fail verification.
-    msg = f"pd:{user_id}:{int(time.time()) // SESSION_WINDOW_SECONDS}".encode()
-    return f"{user_id}.{hmac.new(_secret.encode(), msg, hashlib.sha256).hexdigest()}"
-
-
-def _verify(token: str) -> int:
-    try:
-        user_id, sig = token.split(".", 1)
-        msg = f"pd:{user_id}:{int(time.time()) // SESSION_WINDOW_SECONDS}".encode()
-        expected = hmac.new(_secret.encode(), msg, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(sig, expected):
-            raise ValueError
-        return int(user_id)
-    except (ValueError, TypeError):
-        raise HTTPException(401, "Invalid or expired session")
-
-
-def current_user(authorization: str = Header("")) -> dict:
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(401, "Not signed in")
-    user_id = _verify(authorization[7:])
-    user = db.one("SELECT * FROM users WHERE id = ?", (user_id,))
-    if user is None:
-        raise HTTPException(401, "Account not found")
-    return dict(user)
-
-
-def optional_user(authorization: str = Header("")) -> dict | None:
-    try:
-        return current_user(authorization)
-    except HTTPException:
-        return None
-
-
-def _hash_password(password: str, salt: bytes | None = None) -> str:
-    salt = salt or secrets.token_bytes(16)
-    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 200_000)
-    return f"{salt.hex()}${digest.hex()}"
-
-
-def _pink_active(user_id: int) -> bool:
-    """The entitlement check. Always called server-side before unfiltered chat."""
-    row = db.one(
-        "SELECT 1 FROM subscriptions WHERE user_id=? AND kind='pink_mode'"
-        " AND active=1 AND (renews_at IS NULL OR renews_at > datetime('now'))",
-        (user_id,),
-    )
-    return row is not None
-
-
-def _subscribed(user: dict) -> bool:
-    """An active paid plan — the gate for every OpenRouter model."""
-    if user.get("plan", "free") == "free":
-        return False
-    rows = db.all(
-        "SELECT renews_at FROM subscriptions WHERE user_id=? AND kind='plan' AND active=1",
-        (user["id"],),
-    )
-    now = datetime.now(timezone.utc)
-    for row in rows:
-        renews = row["renews_at"]
-        if renews is None:
-            return True
-        when = datetime.fromisoformat(renews)
-        if when.tzinfo is None:
-            when = when.replace(tzinfo=timezone.utc)
-        if when > now:
-            return True
-    return False
-
-
-def _resolve_model(requested: str | None, subscribed: bool, unfiltered: bool) -> str:
+def _resolve_model(requested: str | None, is_subscribed: bool, unfiltered: bool) -> str:
     """Pick the model a chat request may use. Raises when the plan forbids it."""
-    if not subscribed:
+    if not is_subscribed:
         if requested and requested != HOUSE_MODEL:
             raise HTTPException(402, "Switching models requires an active subscription")
         raise HTTPException(402, "OpenRouter models require an active subscription")
@@ -153,29 +76,37 @@ class RegisterBody(BaseModel):
     username: str
     email: str
     password: str
+    accept_terms: bool = False
+    terms_version: str | None = None
 
 
 @app.post("/api/register")
 def register(body: RegisterBody):
+    # Spec §5: the Terms & Agreement (privacy policy + creation guidelines)
+    # must be read and accepted before an account exists.
+    if not body.accept_terms or body.terms_version != TERMS_VERSION:
+        raise HTTPException(428, "Accept the current Terms & Agreement to create an account")
+    if len(body.password) < 8:
+        raise HTTPException(400, "Use at least 8 characters for your password")
     api_key = secrets.token_urlsafe(32)
     try:
-        user_id = db.run(
-            "INSERT INTO users (username, email, password_hash, api_key_hash) VALUES (?,?,?,?)",
+        user_id = db.insert(
+            "INSERT INTO users (username, email, password_hash, api_key_hash, terms_version, terms_accepted_at)"
+            " VALUES (?,?,?,?,?,?)",
             (
                 body.username.strip(),
                 body.email.strip().lower(),
-                _hash_password(body.password),
+                hash_password(body.password),
                 hashlib.sha256(api_key.encode()).hexdigest(),
+                TERMS_VERSION,
+                datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
             ),
         )
     except Exception:
         raise HTTPException(409, "Username or email already registered")
-    db.run(
-        "INSERT INTO credit_timeline (user_id, delta, reason) VALUES (?, 0, 'account created')",
-        (user_id,),
-    )
+    db.run("INSERT INTO credit_timeline (user_id, delta, reason) VALUES (?, 0, 'account created')", (user_id,))
     # api_key is never returned or stored in plaintext.
-    return {"token": _sign(user_id), "note": "Your API key was generated and stored securely."}
+    return {"token": sign(user_id), "note": "Your API key was generated and stored securely."}
 
 
 class LoginBody(BaseModel):
@@ -186,98 +117,103 @@ class LoginBody(BaseModel):
 @app.post("/api/login")
 def login(body: LoginBody):
     user = db.one("SELECT * FROM users WHERE username=? OR email=?", (body.username, body.username.lower()))
-    if user is None or "$" not in user["password_hash"]:
+    if user is None or not password_matches(body.password, user["password_hash"]):
         raise HTTPException(401, "Invalid credentials")
-    salt_hex, digest_hex = user["password_hash"].split("$", 1)
-    if not hmac.compare_digest(_hash_password(body.password, bytes.fromhex(salt_hex)), user["password_hash"]):
-        raise HTTPException(401, "Invalid credentials")
-    return {"token": _sign(user["id"])}
+    return {"token": sign(user["id"]), "terms_current": user["terms_version"] == TERMS_VERSION}
+
+
+class TermsBody(BaseModel):
+    terms_version: str
+
+
+@app.post("/api/terms/accept")
+def accept_terms(body: TermsBody, user: dict = Depends(current_user)):
+    """Re-acceptance after the Terms change (required before the next purchase)."""
+    if body.terms_version != TERMS_VERSION:
+        raise HTTPException(409, "Those are not the current Terms")
+    db.run("UPDATE users SET terms_version=?, terms_accepted_at=? WHERE id=?",
+           (TERMS_VERSION, datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), user["id"]))
+    return {"terms_version": TERMS_VERSION}
 
 
 @app.get("/api/me")
 def me(user: dict = Depends(current_user)):
     created = datetime.fromisoformat(user["created_at"])
-    if created.tzinfo is None:                  # SQLite datetime('now') is naive UTC
+    if created.tzinfo is None:                  # stored as naive UTC
         created = created.replace(tzinfo=timezone.utc)
-    longevity = (datetime.now(timezone.utc) - created).days
-    credits = user["credits"]
-    balance = user["api_balance"]
+    sub = current_subscription(user["id"])
+    funded = int(user["funded_cents"] or 0)
     return {
         "username": user["username"],
+        "email": user["email"],
         "created_at": user["created_at"],
-        "account_longevity_days": longevity,
-        "plan": user["plan"],
-        "pink_mode": bool(_pink_active(user["id"])),
-        "subscribed": _subscribed(user),
-        "credits": credits,
-        "credits_used": user["credits_used"],
-        "api_balance": round(balance, 2),
-        "low_balance": balance <= 0.5,          # spec: notice when low or zero
-        "low_credits": credits <= 25,
+        "account_longevity_days": (datetime.now(timezone.utc) - created).days,
+        "plan": sub["tier"] if sub else "free",
+        "subscribed": sub is not None,
+        "interval": sub["billing_interval"] if sub else None,
+        "renews_at": sub["period_end"] if sub else None,
+        "subscription_status": sub["status"] if sub else None,
+        "pink_mode": bool(sub and sub["uncensored"]),
+        "funded_credits": core.cents_to_credits(funded),
+        "terms_current": user["terms_version"] == TERMS_VERSION,
         "theme": user["theme"],
     }
 
 
-# ----------------------------------------------------------- subscriptions ---
+# ------------------------------------------------- demo billing (staging) ---
 
-def require_billing() -> None:
-    """No real payment provider is wired yet, so nothing that grants a plan,
-    credits, or Pink Mode may run in production — otherwise anyone could
-    subscribe for free and spend the OpenRouter key. Set PD_DEMO_BILLING=1 for
-    staging; replace this dependency with the Stripe webhook before launch."""
-    if os.environ.get("PD_DEMO_BILLING") != "1":
-        raise HTTPException(501, "Billing is not live yet")
+def require_demo_billing() -> None:
+    """Staging-only shortcuts that grant plans without payment. Real money goes
+    through payments.py (Stripe); these stay closed unless PD_DEMO_BILLING=1 and
+    are never available once real payments are live."""
+    if env("PD_DEMO_BILLING") != "1" or payments.live():
+        raise HTTPException(501, "Demo billing is disabled")
 
 
 class SubscribeBody(BaseModel):
-    plan: str  # port | plus | pro | max
+    plan: str                # go | plus | pro | max
+    interval: str = "month"
+    uncensored: bool = False
 
 
 @app.post("/api/subscribe")
-def subscribe(body: SubscribeBody, user: dict = Depends(current_user), _: None = Depends(require_billing)):
-    if body.plan not in PLAN_CREDITS:
+def subscribe(body: SubscribeBody, user: dict = Depends(current_user), _: None = Depends(require_demo_billing)):
+    if body.plan not in PLAN_CREDITS or body.interval not in ("month", "year"):
         raise HTTPException(400, "Unknown plan")
-    price_cents = PLAN_PRICES_CENTS[body.plan]
-    funded = price_cents / 200            # 50% of every payment funds the user's key
-    grant = PLAN_CREDITS[body.plan]
-    db.run(
-        "UPDATE users SET plan=?, credits=credits+?, api_balance=api_balance+? WHERE id=?",
-        (body.plan, grant, funded / 100, user["id"]),
-    )
-    db.run(
-        "INSERT INTO subscriptions (user_id, kind, tier, amount_cents, renews_at) VALUES (?,?,?,?,?)",
-        (user["id"], "plan", body.plan, price_cents, (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()),
-    )
-    db.run(
-        "INSERT INTO credit_timeline (user_id, delta, reason) VALUES (?,?,?)",
-        (user["id"], grant, f"plan payment — ${(funded / 100):.2f} funds the API key"),
-    )
-    return {
-        "plan": body.plan,
-        "monthly_credits": PLAN_CREDITS[body.plan],
-        "api_key_funding": {"amount": round(funded / 100, 2), "share": "50%"},
-    }
+    price = core.plan_price_cents(PLAN_PRICES_CENTS[body.plan], body.interval)
+    if body.uncensored:
+        price += core.plan_price_cents(UNCENSORED_PRICE_CENTS, body.interval)
+    period = (365 if body.interval == "year" else 30) * 86400
+    with db.transaction() as conn:
+        conn.execute(
+            "INSERT INTO subscriptions (user_id, kind, tier, billing_interval, uncensored, amount_cents,"
+            " status, period_end) VALUES (?, 'plan', ?, ?, ?, ?, 'active', ?)",
+            (user["id"], body.plan, body.interval, int(body.uncensored), price, int(time.time()) + period),
+        )
+        conn.execute("UPDATE users SET plan=? WHERE id=?", (body.plan, user["id"]))
+        payments.credit_payment(conn, user_id=user["id"], kind="subscription", amount_cents=price,
+                                funded_cents=core.split_customer_cents(price),
+                                stripe_ref=f"demo:{user['id']}:{secrets.token_hex(6)}", payment_intent=None)
+    return {"plan": body.plan, "interval": body.interval,
+            "funded_credits": core.cents_to_credits(core.split_customer_cents(price)), "share": "50%"}
 
 
 class TopUpBody(BaseModel):
-    dollars: float  # pay-as-you-go top-up
+    amount_cents: int
 
 
 @app.post("/api/topup")
-def topup(body: TopUpBody, user: dict = Depends(current_user), _: None = Depends(require_billing)):
-    if body.dollars <= 0:
-        raise HTTPException(400, "Top-up must be positive")
-    grant = body.dollars * 10
-    db.run(
-        "UPDATE users SET credits=credits+?, credits_used=credits_used+?, api_balance=api_balance+? WHERE id=?",
-        (grant, grant, body.dollars / 2, user["id"]),
-    )
-    db.run(
-        "INSERT INTO credit_timeline (user_id, delta, reason) VALUES (?,?,?)",
-        (user["id"], grant, f"top-up ${body.dollars:.2f} (50% funds API key)"),
-    )
-    return {"credits_added": grant, "api_key_funding": round(body.dollars / 2, 2)}
+def topup(body: TopUpBody, user: dict = Depends(current_user), _: None = Depends(require_demo_billing)):
+    if not core.topup_valid(body.amount_cents):
+        raise HTTPException(400, "Top-ups are between $5 and $1,000")
+    with db.transaction() as conn:
+        payments.credit_payment(conn, user_id=user["id"], kind="topup", amount_cents=body.amount_cents,
+                                funded_cents=body.amount_cents,
+                                stripe_ref=f"demo:{user['id']}:{secrets.token_hex(6)}", payment_intent=None)
+    return {"credits_added": core.cents_to_credits(body.amount_cents)}
 
+
+# ------------------------------------------------------------------ theme ---
 
 @app.get("/api/theme")
 def get_theme(user: dict = Depends(current_user)):
@@ -298,23 +234,12 @@ def set_theme(body: ThemeBody, user: dict = Depends(current_user)):
     return {"theme": body.theme}  # restored by /api/me on every sign-in
 
 
-@app.post("/api/subscribe/pink-mode")
-def subscribe_pink_mode(user: dict = Depends(current_user), _: None = Depends(require_billing)):
-    if user["plan"] == "free":
-        raise HTTPException(402, "Pink Mode requires a paid plan")
-    db.run(
-        "INSERT INTO subscriptions (user_id, kind, amount_cents, renews_at) VALUES (?,?,?,?)",
-        (user["id"], "pink_mode", PINK_MODE_PRICE_CENTS, (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()),
-    )
-    return {"pink_mode": True, "price_monthly_cents": PINK_MODE_PRICE_CENTS}
-
-
 @app.post("/api/pink-mode")
 def toggle_pink_mode(body: dict, user: dict = Depends(current_user)):
     """The toggle. Off is always allowed; on requires the paid entitlement."""
-    if body.get("enabled") and not _pink_active(user["id"]):
-        raise HTTPException(402, "Pink Mode subscription required")
-    return {"pink_mode": body.get("enabled", False) and _pink_active(user["id"])}
+    if body.get("enabled") and not pink_active(user["id"]):
+        raise HTTPException(402, "Uncensored Mode add-on required")
+    return {"pink_mode": bool(body.get("enabled")) and pink_active(user["id"])}
 
 
 # -------------------------------------------------------------------- chat ---
@@ -322,51 +247,63 @@ def toggle_pink_mode(body: dict, user: dict = Depends(current_user)):
 @app.get("/api/models")
 def list_models(user: dict | None = Depends(optional_user)):
     """The chat model picker. Locked entries are visible but not selectable."""
-    subscribed = bool(user) and _subscribed(user)
+    is_subscribed = bool(user) and subscribed(user)
     models = [{"id": HOUSE_MODEL, "label": "Pink Diamond Lite", "provider": "house", "locked": False}]
     models += [
-        {"id": mid, "label": label, "provider": "openrouter", "locked": not subscribed}
+        {"id": mid, "label": label, "provider": "openrouter", "locked": not is_subscribed}
         for mid, label in OPENROUTER_MODELS.items()
     ]
-    return {"subscribed": subscribed, "default": DEFAULT_MODEL if subscribed else HOUSE_MODEL, "models": models}
+    return {"subscribed": is_subscribed, "default": DEFAULT_MODEL if is_subscribed else HOUSE_MODEL,
+            "models": models}
 
 
 _or_status_cache: dict = {}
 
 
-@app.get("/api/openrouter/status")
-def openrouter_status():
-    """Is the OpenRouter key connected, and can it actually serve chat?
-
-    Never returns the key. A management (provisioning) key authenticates but is
-    refused by the completions endpoint, so it is reported as not usable.
-    """
-    api_key = os.environ.get("OPENROUTER_API_KEY")
-    if not api_key:
-        return {"configured": False, "inference_ready": False,
-                "detail": "OPENROUTER_API_KEY is not set in this environment"}
-    cached = _or_status_cache.get("value")
-    if cached and time.time() - _or_status_cache.get("at", 0) < 300:
-        return cached
+def _key_info(api_key: str) -> dict:
     try:
         with httpx.Client(timeout=10) as client:
             resp = client.get("https://openrouter.ai/api/v1/key", headers={"Authorization": f"Bearer {api_key}"})
     except httpx.HTTPError:
-        return {"configured": True, "inference_ready": False, "detail": "OpenRouter unreachable"}
+        return {"ok": False, "detail": "OpenRouter unreachable"}
     if resp.status_code != 200:
-        result = {"configured": True, "inference_ready": False, "detail": f"Key rejected ({resp.status_code})"}
-    else:
-        data = resp.json().get("data", {})
-        management = bool(data.get("is_management_key") or data.get("is_provisioning_key"))
-        result = {
-            "configured": True,
-            "inference_ready": not management,
-            "key_type": "management" if management else "inference",
-            "label": data.get("label"),
-            "limit_remaining": data.get("limit_remaining"),
-            "detail": "Management keys cannot call chat completions — set an inference key"
-            if management else "Connected",
-        }
+        return {"ok": False, "detail": f"Key rejected ({resp.status_code})"}
+    data = resp.json().get("data", {})
+    return {"ok": True, "management": bool(data.get("is_management_key") or data.get("is_provisioning_key")),
+            "label": data.get("label")}
+
+
+@app.get("/api/openrouter/status")
+def openrouter_status():
+    """Is OpenRouter connected? Never returns a key.
+
+    Pink Diamond needs the *management* key (OPENROUTER_MANAGEMENT_KEY) to mint
+    each paying user's own inference key; OPENROUTER_API_KEY is an optional
+    shared inference key for staging.
+    """
+    cached = _or_status_cache.get("value")
+    if cached and time.time() - _or_status_cache.get("at", 0) < 300:
+        return cached
+    result = {"management_key": {"configured": False}, "shared_key": {"configured": False},
+              "per_user_keys": False}
+    mgmt = env("OPENROUTER_MANAGEMENT_KEY")
+    if mgmt:
+        info = _key_info(mgmt)
+        result["management_key"] = {"configured": True, "valid": info["ok"] and info.get("management", False),
+                                    "label": info.get("label"), "detail": info.get("detail")
+                                    or ("ok" if info.get("management") else "not a management key")}
+        result["per_user_keys"] = result["management_key"]["valid"] and ork.configured()
+    shared = env("OPENROUTER_API_KEY")
+    if shared:
+        info = _key_info(shared)
+        result["shared_key"] = {"configured": True, "inference_ready": info["ok"] and not info.get("management"),
+                                "label": info.get("label")}
+    # Kept for older clients and native/go/orcheck.
+    result["configured"] = bool(mgmt or shared)
+    result["inference_ready"] = bool(result["per_user_keys"] or result["shared_key"].get("inference_ready"))
+    result["detail"] = ("Connected" if result["inference_ready"] else
+                        "Set OPENROUTER_MANAGEMENT_KEY and PD_KEY_ENCRYPTION_SECRET" if not result["configured"]
+                        else "Configured, but no usable route yet")
     _or_status_cache.update(value=result, at=time.time())
     return result
 
@@ -378,28 +315,28 @@ class ChatBody(BaseModel):
 
 @app.post("/api/chat")
 def chat(body: ChatBody, user: dict = Depends(current_user)):
-    unfiltered = _pink_active(user["id"])          # server decides, not the browser
-    model = _resolve_model(body.model, _subscribed(user), unfiltered)
-    cost = PINK_MODE_CREDIT_MULTIPLIER if unfiltered else 1
-    if user["credits"] < cost:
-        raise HTTPException(402, "Out of credits")
+    unfiltered = pink_active(user["id"])          # server decides, not the browser
+    model = _resolve_model(body.model, subscribed(user), unfiltered)
+
+    # Spend comes out of the user's own OpenRouter key, whose limit is their
+    # balance — OpenRouter itself refuses once it is used up.
+    api_key = ork.user_key(user) or env("OPENROUTER_API_KEY")
+    if not api_key:
+        raise HTTPException(503, "Model access isn't funded yet — top up to start")
 
     system = (
         "You are Pink Diamond, a web-hosted AI agent."
         + (
-            " Pink Mode is active for this account: blunt tone, adult creative work between"
+            " Uncensored Mode is active for this account: blunt tone, adult creative work between"
             " consenting adults and dark fiction are allowed."
             " Hard limits that no payment removes: no sexual content involving minors,"
             " no sexual content involving real people, no genuine weapons/drug-synthesis/malware"
             " instructions, no targeted harassment of real people. State these limits plainly if asked."
         )
         if unfiltered
-        else "You are Pink Diamond, a web-hosted AI agent. Keep responses helpful and coherent."
+        else " Follow the Pink Diamond creation guidelines: no sexual or graphic content. Keep responses"
+             " helpful and coherent."
     )
-    api_key = os.environ.get("OPENROUTER_API_KEY")
-    if not api_key:
-        raise HTTPException(503, "OPENROUTER_API_KEY is not configured")
-
     with httpx.Client(timeout=60) as client:
         resp = client.post(
             "https://openrouter.ai/api/v1/chat/completions",
@@ -410,33 +347,35 @@ def chat(body: ChatBody, user: dict = Depends(current_user)):
                     {"role": "system", "content": system},
                     {"role": "user", "content": body.message},
                 ],
+                "usage": {"include": True},
             },
         )
+    if resp.status_code == 402:
+        raise HTTPException(402, "Out of Pink Credits — top up to keep going")
     if resp.status_code != 200:
         raise HTTPException(502, "Model provider error")
 
-    reply = resp.json()["choices"][0]["message"]["content"]
-    db.run("UPDATE users SET credits=credits-?, credits_used=credits_used+? WHERE id=?", (cost, cost, user["id"]))
-    db.run(
-        "INSERT INTO credit_timeline (user_id, delta, reason) VALUES (?,?,?)",
-        (user["id"], -cost, "chat (pink mode)" if unfiltered else "chat"),
-    )
-    db.run(
-        "INSERT INTO chat_messages (user_id, role, content, unfiltered) VALUES (?,?,?,?)",
-        (user["id"], "user", body.message, int(unfiltered)),
-    )
-    db.run(
-        "INSERT INTO chat_messages (user_id, role, content, unfiltered) VALUES (?,?,?,?)",
-        (user["id"], "agent", reply, int(unfiltered)),
-    )
-    # Low / zero balance notices are first-class product features (spec §4).
-    updated = db.one("SELECT credits, api_balance FROM users WHERE id=?", (user["id"],))
+    data = resp.json()
+    reply = data["choices"][0]["message"]["content"]
+    spent_credits = round(float((data.get("usage") or {}).get("cost") or 0) * 100, 2)
+    with db.transaction() as conn:
+        conn.execute("UPDATE users SET credits_used=credits_used+? WHERE id=?", (spent_credits, user["id"]))
+        conn.execute("INSERT INTO credit_timeline (user_id, delta, reason) VALUES (?,?,?)",
+                     (user["id"], -spent_credits, f"chat · {model}"))
+        conn.execute("INSERT INTO chat_messages (user_id, role, content, unfiltered) VALUES (?,?,?,?)",
+                     (user["id"], "user", body.message, int(unfiltered)))
+        conn.execute("INSERT INTO chat_messages (user_id, role, content, unfiltered) VALUES (?,?,?,?)",
+                     (user["id"], "agent", reply, int(unfiltered)))
     notice = None
-    if updated["credits"] <= 0:
-        notice = "You are out of credits — generation pauses until you top up or upgrade."
-    elif updated["credits"] <= 25:
-        notice = f"Low credits: {updated['credits']:.0f} remaining."
-    if updated["api_balance"] <= 0.5 and notice is None:
-        notice = "API key balance is low — half of every payment funds it; top up anytime."
-    return {"reply": reply, "unfiltered": unfiltered, "credits_charged": cost, "model": model,
-            "credits_left": updated["credits"], "api_balance": round(updated["api_balance"], 2), "notice": notice}
+    if user.get("or_key_hash"):
+        bal = ork.balance({**user, "funded_cents": user["funded_cents"]})
+        if bal["remaining_cents"] <= 0:
+            notice = "You're out of Pink Credits — generation pauses until you top up."
+        elif bal["low"]:
+            notice = f"Low balance: {bal['credits']:,} Pink Credits left."
+    return {"reply": reply, "unfiltered": unfiltered, "model": model,
+            "credits_spent": spent_credits, "notice": notice}
+
+
+if os.environ.get("PD_INIT_DB") == "1":
+    db.init_db()
